@@ -1,13 +1,129 @@
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.6/dist/web/static/pretendard.css');
+@import "./styles/tokens.css";
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--ss-font-sans);
+  --font-mono: var(--ss-font-mono);
+
+  /* Shared StarSnap typography scale */
+  --text-xs: var(--ss-font-size-xs);
+  --text-xs--line-height: var(--ss-line-height-normal);
+  --text-sm: var(--ss-font-size-sm);
+  --text-sm--line-height: var(--ss-line-height-normal);
+  --text-base: var(--ss-font-size-base);
+  --text-base--line-height: var(--ss-line-height-normal);
+  --text-lg: var(--ss-font-size-lg);
+  --text-lg--line-height: var(--ss-line-height-snug);
+  --text-xl: var(--ss-font-size-xl);
+  --text-xl--line-height: var(--ss-line-height-snug);
+  --text-2xl: var(--ss-font-size-two-xl);
+  --text-2xl--line-height: var(--ss-line-height-tight);
+  --text-3xl: var(--ss-font-size-three-xl);
+  --text-3xl--line-height: var(--ss-line-height-tight);
+  --text-4xl: var(--ss-font-size-four-xl);
+  --text-4xl--line-height: var(--ss-line-height-tight);
+  --text-label: var(--ss-font-size-label);
+  --text-label--line-height: var(--ss-line-height-normal);
+  --text-body-sm: var(--ss-font-size-body-sm);
+  --text-body-sm--line-height: var(--ss-line-height-normal);
+  --text-micro: var(--ss-font-size-micro);
+  --text-micro--line-height: var(--ss-line-height-normal);
+
+  /* StarSnap design tokens (Figma) */
+  --color-ink: var(--ss-text);
+  --color-ink-soft: var(--ss-text-soft);
+  --color-surface: var(--ss-canvas);
+  --color-line: var(--ss-border);
+  --color-placeholder: var(--ss-surface-subtle);
+  --color-sub: var(--ss-text-subtle);
+  --color-muted: var(--ss-text-muted);
+  --color-brand: var(--ss-brand);
+  --color-brand-soft: var(--ss-brand-soft);
+  --color-danger: var(--ss-danger);
+}
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-sans);
+  font-size: var(--ss-font-size-base);
+  line-height: var(--ss-line-height-normal);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  transition-duration: var(--ss-duration-fast);
+  transition-timing-function: var(--ss-ease-standard);
+}
+
+:focus-visible {
+  outline: 3px solid var(--ss-focus-ring);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+button:not(:disabled),
+[role='button'] {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+/* Prevent page content from shifting when vertical scrollbar appears/disappears. */
+html {
+  scrollbar-gutter: stable;
+}
+
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+
+/* Masonry columns for snap grids */
+.snap-masonry {
+  column-gap: 16px;
+}
+.snap-masonry > * {
+  break-inside: avoid;
+  margin-bottom: 16px;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Keep only the custom calendar icon on date inputs that opt in. */
+.date-input-no-native-picker::-webkit-calendar-picker-indicator {
+  opacity: 0;
 }
