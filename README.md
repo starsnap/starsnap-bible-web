@@ -1,46 +1,103 @@
-# Getting Started with Create React App
+# StarSnap Web
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+StarSnap의 일반 사용자용 웹 클라이언트다. 회원 인증, 스냅 피드·상세·업로드, 스타 탐색, 친구 관리, 프로필, 실시간 채팅을 제공하며 메인 백엔드의 REST API와 WebSocket에 연결한다.
 
-## Available Scripts
+## 주요 기능
 
-In the project directory, you can run:
+- Google OAuth와 쿠키 기반 로그인·세션 갱신
+- 스냅 피드, 상세, 좋아요, 저장, 댓글, 신고
+- 사진·영상 presigned URL 업로드와 처리 상태 확인
+- 스타·스타 그룹·사용자 검색
+- 친구 요청·수락·거절·취소·삭제
+- 채팅방, 메시지 WebSocket 수신, 전송 제한 안내와 실패 초안 복구
+- 반응형 레이아웃, 라이트·다크 테마, 다국어 리소스
 
-### `npm start`
+## 언어와 기술 스택
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+버전은 `package.json`의 현재 설정을 기준으로 한다.
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+| 구분 | 기술 | 설정 버전 |
+|---|---|---:|
+| 언어 | TypeScript | 5.8.3 |
+| UI | React / React DOM | 18.3.1 |
+| 빌드 | Vite | 5.4.12 |
+| 라우팅 | React Router DOM | 6.27.0 |
+| 서버 상태 | TanStack React Query | 4.34.17 |
+| HTTP | Axios | 1.7.7 |
+| 폼 | React Hook Form / Zod | 7.45.0 / 3.22.4 |
+| 스타일 | Tailwind CSS | 4.3.0 |
+| E2E 도구 | Cypress | 12.6.0 |
 
-### `npm test`
+## 시스템 아키텍처
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+~~~mermaid
+flowchart LR
+    Browser[React 브라우저 앱] --> Router[React Router]
+    Router --> Pages[페이지와 기능 컴포넌트]
+    Pages --> Query[React Query / 서비스 계층]
+    Query --> Axios[AuthAxios / CustomAxios]
+    Axios -->|REST + 쿠키| API[StarSnap 메인 API]
+    Pages -->|WebSocket| Chat[메인 API 채팅]
+    Pages -->|presigned PUT| S3[S3]
+    API --> DB[(PostgreSQL)]
+    API --> Redis[(Redis)]
+~~~
 
-### `npm run build`
+인증이 필요한 HTTP 요청은 공통 Axios 계층을 통과한다. 채팅은 별도 서비스가 WebSocket 연결·재연결과 서버 거절 프레임을 처리하며, 이미지와 영상은 백엔드에서 발급받은 URL로 S3에 직접 전송한다.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## 프로젝트 구조
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+~~~text
+src/
+├─ assets/       # 이미지와 정적 리소스
+├─ components/   # 공통 UI와 레이아웃
+├─ constant/     # 공통 상수
+├─ context/      # 인증 등 전역 상태
+├─ hooks/        # 재사용 React hooks
+├─ i18n/         # 다국어 리소스
+├─ lib/          # Axios 등 기반 모듈
+├─ pages/        # 라우트 단위 화면
+├─ routes/       # 라우터와 접근 제어
+├─ services/     # REST·채팅·업로드 서비스
+├─ styles/       # 전역 스타일과 디자인 토큰
+└─ utils/        # URL·날짜 등 공통 유틸리티
+~~~
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 환경 설정
 
-### `npm run eject`
+환경별 `.env`에는 필요한 값만 설정하고 실제 키나 토큰은 README에 기록하지 않는다.
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+- `VITE_API_BASE_URL`: REST API 기준 URL
+- `VITE_WS_BASE_URL`: 채팅 WebSocket 기준 URL
+- `VITE_PUBLIC_LOCAL_API_HOST`: 배포 환경 API 호스트 대체값
+- `VITE_REPORT_BASE_URL`: 신고 API 기준 URL
+- `VITE_GOOGLE_CLIENT_ID`: Google OAuth 클라이언트 ID
+- `VITE_S3_INPUT_BUCKET_URL`, `VITE_S3_OUTPUT_BUCKET_URL`: 미디어 표시 기준 URL
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 설치와 실행
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+~~~bash
+npm install
+npm run dev
+~~~
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+개발 서버는 Vite가 실행하며 백엔드 연결은 Vite proxy 또는 환경 변수로 결정한다.
 
-## Learn More
+## 빌드와 확인
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+~~~bash
+npm run build
+npm run preview
+npm run design:check
+npm run cypress:run
+~~~
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+`npm run build`는 TypeScript 프로젝트 빌드 후 Vite 번들을 생성한다. 현재 `package.json`에는 Jest용 `test` 스크립트가 없으므로 Jest 의존성이 설치돼 있다는 이유만으로 단위 테스트가 자동 실행된다고 가정하면 안 된다.
+
+## 관련 문서
+
+- [회원가입 흐름](README_SIGNUP.md)
+- [웹 디자인 시스템](design-system/README.md)
+- [공통 디자인 시스템](../../DESIGN_SYSTEM.md)
+- [메인 API 명세](../starsnap-backend/API_SPEC.md)
+- [Main 통합 개요](../README.md)
