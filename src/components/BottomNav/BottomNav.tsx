@@ -39,7 +39,7 @@ const BottomNav: React.FC = () => {
                             }`}
                             aria-current={active ? 'page' : undefined}
                         >
-                            <span className={item.primary ? 'flex h-9 w-12 items-center justify-center rounded-2xl bg-brand shadow-sm' : undefined}>
+                            <span className={item.primary ? 'flex h-9 w-12 items-center justify-center rounded-2xl bg-brand text-on-brand shadow-sm' : undefined}>
                                 <Icon size={item.primary ? 22 : 21} fill={active && !item.primary ? 'currentColor' : 'none'} />
                             </span>
                             <span>{item.label}</span>

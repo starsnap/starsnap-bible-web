@@ -30,14 +30,14 @@ const AppHeader: React.FC = () => {
                     aria-label="StarSnap home"
                 >
                     <StarIcon size={24} className="text-brand" fill="currentColor" stroke="none" />
-                    <span className="hidden text-xl font-semibold tracking-tight sm:inline">StarSnap</span>
+                    <span className="hidden text-xl font-semibold tracking-tight lg:inline">StarSnap</span>
                 </button>
 
-                <div className="hidden flex-1 justify-center md:flex">
+                <div className="hidden flex-1 justify-center lg:flex">
                     <div className="relative w-full max-w-[520px]">
                         <SearchIcon
                             size={18}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
                         />
                         <input
                             className="h-11 w-full rounded-full border border-transparent bg-placeholder pl-11 pr-4 text-sm text-ink placeholder:text-muted hover:border-line focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
@@ -52,10 +52,10 @@ const AppHeader: React.FC = () => {
                 <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
                     <button
                         onClick={() => navigate('/add')}
-                        className="hidden min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full bg-brand px-3 text-sm font-bold text-ink shadow-sm hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:flex lg:px-4"
+                        className="hidden min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full bg-brand px-4 text-sm font-bold text-on-brand shadow-sm hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand lg:flex"
                         aria-label="스냅 업로드"
                     >
-                        <PlusIcon size={18} className="text-ink" />
+                        <PlusIcon size={18} />
                         <span className="hidden lg:inline">업로드</span>
                     </button>
                     <button className="flex h-11 w-11 items-center justify-center rounded-full text-sub hover:bg-placeholder hover:text-ink" aria-label="알림">

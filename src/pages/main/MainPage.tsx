@@ -1,19 +1,24 @@
 import {GoogleOneTapLogin} from "../../components/auth/GoogleOneTapLogin";
-import useSignUpModal from "../../hooks/useSignUpModal"
 import OauthSignupModal from "../../components/auth/OauthSignupModal";
+import {SignUpModalProvider, useSignUpModalContext} from "../../context/SignUpModalContext";
 
-
-const MainPage = () => {
-
-    const {showModal} = useSignUpModal()
+const MainPageInner = () => {
+    const {showModal} = useSignUpModalContext();
     return (
         <>
-
             <div>
                 {showModal && <OauthSignupModal/>}
                 <GoogleOneTapLogin/>
             </div>
         </>
+    )
+}
+
+const MainPage = () => {
+    return (
+        <SignUpModalProvider>
+            <MainPageInner/>
+        </SignUpModalProvider>
     )
 }
 

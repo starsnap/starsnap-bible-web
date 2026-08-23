@@ -52,7 +52,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mode, onToggleCompact }) => {
 
     return (
         <aside
-            className={`fixed left-0 top-16 bottom-0 bg-white border-r border-line overflow-y-auto transition-[width] duration-200 ${
+            className={`fixed left-0 top-16 bottom-0 bg-panel border-r border-line overflow-y-auto transition-[width] duration-200 ${
                 compact ? 'w-20' : 'w-60'
             }`}
         >

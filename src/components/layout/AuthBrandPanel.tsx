@@ -8,7 +8,7 @@ type Props = {
 
 const AuthBrandPanel: React.FC<Props> = ({ active = 0 }) => {
     return (
-        <div className="relative hidden lg:flex flex-col w-[42%] max-w-[640px] bg-ink text-white p-12 overflow-hidden">
+        <div className="relative hidden lg:flex flex-col w-[42%] max-w-[640px] bg-media-backdrop text-on-media p-12 overflow-hidden">
             <div className="flex items-center gap-2">
                 <StarIcon size={28} className="text-brand" fill="currentColor" stroke="none" />
                 <span className="text-2xl font-semibold tracking-tight">StarSnap</span>
@@ -16,8 +16,8 @@ const AuthBrandPanel: React.FC<Props> = ({ active = 0 }) => {
 
             {/* floating card mockups */}
             <div className="relative flex-1 my-8">
-                <div className="absolute left-[42%] top-[6%] w-44 h-56 rounded-2xl bg-white/[0.06] border border-white/10" />
-                <div className="absolute left-[22%] top-[24%] w-36 h-44 rounded-2xl bg-white/[0.08] border border-white/10" />
+                <div className="absolute left-[42%] top-[6%] w-44 h-56 rounded-2xl bg-on-media/[0.06] border border-on-media/10" />
+                <div className="absolute left-[22%] top-[24%] w-36 h-44 rounded-2xl bg-on-media/[0.08] border border-on-media/10" />
                 <div className="absolute left-[46%] top-[40%] w-40 h-44 rounded-2xl bg-brand/10 border border-brand/20" />
             </div>
 
@@ -26,7 +26,7 @@ const AuthBrandPanel: React.FC<Props> = ({ active = 0 }) => {
                     최애의 모든 순간을
                     <br />한 곳에서, 스타스냅
                 </h2>
-                <p className="mt-4 text-white/60 leading-relaxed">
+                <p className="mt-4 text-on-media/60 leading-relaxed">
                     좋아하는 스타의 스냅을 모으고
                     <br />팬들과 함께 나누는 공간
                 </p>
@@ -36,7 +36,7 @@ const AuthBrandPanel: React.FC<Props> = ({ active = 0 }) => {
                         <span
                             key={i}
                             className={`h-1.5 rounded-full transition-all ${
-                                i === active ? 'w-5 bg-brand' : 'w-1.5 bg-white/25'
+                                i === active ? 'w-5 bg-brand' : 'w-1.5 bg-on-media/25'
                             }`}
                         />
                     ))}
