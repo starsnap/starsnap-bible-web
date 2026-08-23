@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f6f7fb" />
+    <script>
+      (() => {
+        const root = document.documentElement;
+        let theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+        try {
+          const storedTheme = window.localStorage.getItem('starsnap-theme');
+          if (storedTheme === 'light' || storedTheme === 'dark') theme = storedTheme;
+        } catch {
+          // Keep the system preference when storage is unavailable.
+        }
+
+        root.classList.toggle('dark', theme === 'dark');
+        root.dataset.theme = theme;
+        root.style.colorScheme = theme;
+        document.querySelector('meta[name="theme-color"]').content =
+          theme === 'dark' ? '#121722' : '#f6f7fb';
+      })();
+    </script>
+    <meta
+      name="description"
+      content="좋아하는 순간과 스타를 연결하는 StarSnap"
+    />
+    <link rel="apple-touch-icon" href="/logo192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>StarSnap</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>
