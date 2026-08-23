@@ -268,7 +268,7 @@ const AddSnapPage: React.FC = () => {
                             setDragOver(false)
                             addFiles(e.dataTransfer.files)
                         }}
-                        className={`rounded-2xl border-2 border-dashed bg-white flex flex-col items-center justify-center text-center py-20 px-6 transition-colors ${
+                        className={`rounded-2xl border-2 border-dashed bg-panel flex flex-col items-center justify-center text-center py-20 px-6 transition-colors ${
                             dragOver ? 'border-brand bg-surface' : 'border-line'
                         }`}
                     >
@@ -285,7 +285,7 @@ const AddSnapPage: React.FC = () => {
                                 openFilePicker()
                                 console.log('file picker opened')
                             }}
-                            className="mt-5 h-10 px-5 rounded-lg bg-brand text-ink text-sm font-bold hover:brightness-95"
+                            className="mt-5 min-h-11 rounded-xl bg-brand px-5 text-sm font-bold text-on-brand hover:brightness-95"
                         >
                             파일 선택
                         </button>
@@ -301,9 +301,12 @@ const AddSnapPage: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => removeImage(i)}
-                                    className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-white border border-line flex items-center justify-center text-sub shadow-sm"
+                                    className="absolute -right-2 -top-2 flex h-11 w-11 items-center justify-center rounded-full text-sub"
+                                    aria-label={`선택한 이미지 ${i + 1} 제거`}
                                 >
-                                    <CloseIcon size={14} />
+                                    <span className="flex h-6 w-6 items-center justify-center rounded-full border border-line bg-[var(--ss-surface-translucent)] text-ink shadow-sm">
+                                        <CloseIcon size={14} />
+                                    </span>
                                 </button>
                             </div>
                         ))}
@@ -320,7 +323,7 @@ const AddSnapPage: React.FC = () => {
                 </div>
 
                 {/* Form */}
-                <div className="rounded-2xl border border-line bg-white p-6">
+                <div className="rounded-2xl border border-line bg-panel p-6">
                     <label className={fieldLabel}>제목</label>
                     <input
                         value={title}
@@ -346,13 +349,14 @@ const AddSnapPage: React.FC = () => {
                             {tags.map((tag) => (
                                 <span
                                     key={tag}
-                                    className="h-8 pl-3 pr-2 inline-flex items-center gap-1 rounded-full text-sm bg-surface text-sub border border-line"
+                                    className="inline-flex min-h-11 items-center gap-1 rounded-full border border-line bg-surface pl-3 pr-1 text-sm text-sub"
                                 >
                                     #{tag}
                                     <button
                                         type="button"
                                         onClick={() => removeTag(tag)}
-                                        className="text-muted hover:text-ink"
+                                        className="flex h-11 w-11 items-center justify-center rounded-full text-muted hover:text-ink"
+                                        aria-label={`${tag} 태그 제거`}
                                     >
                                         <CloseIcon size={12} />
                                     </button>
@@ -413,10 +417,12 @@ const AddSnapPage: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={() => removeStar(star)}
-                                            className="absolute -right-1 -bottom-1 w-6 h-6 rounded-full bg-white border border-line flex items-center justify-center text-sub"
+                                            className="absolute -bottom-2 -right-2 flex h-11 w-11 items-center justify-center rounded-full text-sub"
                                             aria-label={`${star.name} 제거`}
                                         >
-                                            <CloseIcon size={12} />
+                                            <span className="flex h-6 w-6 items-center justify-center rounded-full border border-line bg-[var(--ss-surface-translucent)] text-ink">
+                                                <CloseIcon size={12} />
+                                            </span>
                                         </button>
                                     </div>
                                     <p className="mt-1.5 text-sm text-sub text-center truncate">{star.name}</p>
@@ -456,10 +462,12 @@ const AddSnapPage: React.FC = () => {
                                         <button
                                             type="button"
                                             onClick={() => removeStarGroup(group.id)}
-                                            className="absolute -right-1 -bottom-1 w-6 h-6 rounded-full bg-white border border-line flex items-center justify-center text-sub"
+                                            className="absolute -bottom-2 -right-2 flex h-11 w-11 items-center justify-center rounded-full text-sub"
                                             aria-label={`${group.name} 제거`}
                                         >
-                                            <CloseIcon size={12} />
+                                            <span className="flex h-6 w-6 items-center justify-center rounded-full border border-line bg-[var(--ss-surface-translucent)] text-ink">
+                                                <CloseIcon size={12} />
+                                            </span>
                                         </button>
                                     </div>
                                     <p className="mt-1.5 text-sm text-sub text-center truncate">{group.name}</p>
@@ -478,13 +486,13 @@ const AddSnapPage: React.FC = () => {
                                     value={dateTaken}
                                     onChange={(e) => setDateTaken(e.target.value)}
                                     onClick={openDatePicker}
-                                    className={`${inputBase} date-input-no-native-picker select-none pr-10 cursor-pointer`}
+                                    className={`${inputBase} date-input-no-native-picker select-none pr-12 cursor-pointer`}
                                     style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
                                 />
                                 <button
                                     type="button"
                                     onClick={openDatePicker}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted pointer-events-auto"
+                                    className="pointer-events-auto absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-xl text-muted"
                                     aria-label="촬영 날짜 달력 열기"
                                 >
                                     <CalendarIcon size={18} className="pointer-events-none" />
@@ -513,7 +521,7 @@ const AddSnapPage: React.FC = () => {
                             <p className="text-sm font-bold text-ink">AI 생성 이미지 표시</p>
                             <p className="text-xs text-muted mt-0.5">AI로 만든 이미지인 경우 표시됩니다</p>
                         </div>
-                        <Toggle checked={aiFlag} onChange={setAiFlag} />
+                        <Toggle ariaLabel="AI 생성 이미지 표시" checked={aiFlag} onChange={setAiFlag} />
                     </div>
 
                     <div className="mt-5 flex items-center justify-between">
@@ -521,7 +529,7 @@ const AddSnapPage: React.FC = () => {
                             <p className="text-sm font-bold text-ink">댓글 허용</p>
                             <p className="text-xs text-muted mt-0.5">다른 사용자가 댓글을 남길 수 있어요</p>
                         </div>
-                        <Toggle checked={commentState} onChange={setCommentState} />
+                        <Toggle ariaLabel="댓글 허용" checked={commentState} onChange={setCommentState} />
                     </div>
 
                     {errorMessage && <p className="mt-4 text-sm text-danger">{errorMessage}</p>}
@@ -531,7 +539,7 @@ const AddSnapPage: React.FC = () => {
                         type="button"
                         onClick={handleSubmit}
                         disabled={submitting || images.length === 0 || title.trim() === ''}
-                        className="mt-6 w-full h-12 rounded-lg bg-brand text-ink font-bold hover:brightness-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="mt-6 w-full h-12 rounded-lg bg-brand text-on-brand font-bold hover:brightness-95 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         {submitting ? '업로드 중...' : '게시하기'}
                     </button>
@@ -540,13 +548,13 @@ const AddSnapPage: React.FC = () => {
 
             {starModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-                    <div className="w-[760px] h-[640px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden rounded-3xl bg-white border border-line flex flex-col">
+                    <div className="w-[760px] h-[640px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden rounded-3xl bg-panel border border-line flex flex-col">
                         <div className="h-14 px-6 flex items-center justify-between border-b border-line">
                             <h2 className="text-xl font-bold text-ink">스타 선택</h2>
                             <button
                                 type="button"
                                 onClick={() => setStarModalOpen(false)}
-                                className="w-8 h-8 rounded-md bg-surface text-muted flex items-center justify-center"
+                                className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface text-muted"
                                 aria-label="스타 선택 모달 닫기"
                             >
                                 <CloseIcon size={16} />
@@ -570,7 +578,7 @@ const AddSnapPage: React.FC = () => {
                                         key={`chip-${star.id || star.name}`}
                                         type="button"
                                         onClick={() => toggleStarInModal(star)}
-                                        className="h-7 rounded-full border border-brand bg-brand-soft px-3 text-sm text-sub"
+                                        className="min-h-11 rounded-full border border-brand bg-brand-soft px-3 text-sm text-sub"
                                     >
                                         {star.name} ×
                                     </button>
@@ -606,7 +614,7 @@ const AddSnapPage: React.FC = () => {
                                                 <p className="mt-3 text-base font-bold text-ink truncate">{star.name}</p>
                                                 <p className="mt-0.5 text-xs text-muted truncate">{star.nickname || '-'}</p>
                                                 {active && (
-                                                    <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-brand">
+                                                    <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-on-brand">
                                                         <CheckIcon size={12} />
                                                     </span>
                                                 )}
@@ -621,7 +629,7 @@ const AddSnapPage: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => setStarModalOpen(false)}
-                                className="h-9 px-6 rounded-xl border border-line bg-white text-ink font-bold"
+                                className="min-h-11 rounded-xl border border-line bg-panel px-6 font-bold text-ink"
                             >
                                 취소
                             </button>
@@ -631,7 +639,7 @@ const AddSnapPage: React.FC = () => {
                                     setSelectedStars(modalSelectedStars)
                                     setStarModalOpen(false)
                                 }}
-                                className="h-9 rounded-xl bg-brand px-6 font-bold text-ink"
+                                className="min-h-11 rounded-xl bg-brand px-6 font-bold text-on-brand"
                             >
                                 확인 ({modalSelectedStars.length})
                             </button>
@@ -642,13 +650,13 @@ const AddSnapPage: React.FC = () => {
 
             {starGroupModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-                    <div className="w-[760px] h-[640px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden rounded-3xl bg-white border border-line flex flex-col">
+                    <div className="w-[760px] h-[640px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden rounded-3xl bg-panel border border-line flex flex-col">
                         <div className="h-14 px-6 flex items-center justify-between border-b border-line">
                             <h2 className="text-xl font-bold text-ink">스타그룹 선택</h2>
                             <button
                                 type="button"
                                 onClick={() => setStarGroupModalOpen(false)}
-                                className="w-8 h-8 rounded-md bg-surface text-muted flex items-center justify-center"
+                                className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface text-muted"
                                 aria-label="스타그룹 선택 모달 닫기"
                             >
                                 <CloseIcon size={16} />
@@ -672,7 +680,7 @@ const AddSnapPage: React.FC = () => {
                                         key={`group-chip-${group.id}`}
                                         type="button"
                                         onClick={() => toggleStarGroupInModal(group)}
-                                        className="h-7 rounded-full border border-brand bg-brand-soft px-3 text-sm text-sub"
+                                        className="min-h-11 rounded-full border border-brand bg-brand-soft px-3 text-sm text-sub"
                                     >
                                         {group.name} ×
                                     </button>
@@ -707,7 +715,7 @@ const AddSnapPage: React.FC = () => {
                                                 )}
                                                 <p className="mt-3 text-base font-bold text-ink truncate">{group.name}</p>
                                                 {active && (
-                                                    <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-brand">
+                                                    <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-on-brand">
                                                         <CheckIcon size={12} />
                                                     </span>
                                                 )}
@@ -722,7 +730,7 @@ const AddSnapPage: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => setStarGroupModalOpen(false)}
-                                className="h-9 px-6 rounded-xl border border-line bg-white text-ink font-bold"
+                                className="min-h-11 rounded-xl border border-line bg-panel px-6 font-bold text-ink"
                             >
                                 취소
                             </button>
@@ -732,7 +740,7 @@ const AddSnapPage: React.FC = () => {
                                     setSelectedStarGroups(modalSelectedStarGroups)
                                     setStarGroupModalOpen(false)
                                 }}
-                                className="h-9 rounded-xl bg-brand px-6 font-bold text-ink"
+                                className="min-h-11 rounded-xl bg-brand px-6 font-bold text-on-brand"
                             >
                                 확인 ({modalSelectedStarGroups.length})
                             </button>

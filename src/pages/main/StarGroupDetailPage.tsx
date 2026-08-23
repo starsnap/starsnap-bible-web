@@ -104,32 +104,32 @@ const StarGroupDetailPage: React.FC = () => {
     return (
         <div className="px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
             {/* Banner */}
-            <div className="rounded-2xl bg-gradient-to-br from-muted to-sub p-7">
+            <div className="rounded-2xl bg-gradient-to-br from-media-backdrop-soft to-media-backdrop p-7">
                 <div className="flex items-center gap-6">
                     {imageCandidates.length > 0 ? (
                         <img
                             src={imageCandidates[0]}
                             alt={`${group.name} 프로필`}
-                            className="w-28 h-28 rounded-full object-cover border-4 border-white/70 shrink-0"
+                            className="w-28 h-28 rounded-full object-cover border-4 border-on-media/70 shrink-0"
                             onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                         />
                     ) : (
-                        <span className="w-28 h-28 rounded-full bg-white/30 border-4 border-white/70 shrink-0" />
+                        <span className="w-28 h-28 rounded-full bg-on-media/30 border-4 border-on-media/70 shrink-0" />
                     )}
-                    <div className="flex-1 min-w-0 text-white">
+                    <div className="flex-1 min-w-0 text-on-media">
                         <h1 className="text-3xl font-bold">{group.name}</h1>
-                        <p className="mt-1.5 text-sm text-white/90">
+                        <p className="mt-1.5 text-sm text-on-media/90">
                             데뷔 {group.debutDate || '-'}
                         </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                        <button className="h-10 px-5 rounded-lg bg-brand text-ink text-sm font-bold hover:brightness-95">
+                        <button className="h-10 px-5 rounded-lg bg-brand text-on-brand text-sm font-bold hover:brightness-95">
                             팬 추가
                         </button>
-                        <button className="w-10 h-10 rounded-lg bg-white text-ink flex items-center justify-center hover:bg-white/90">
+                        <button className="w-10 h-10 rounded-lg bg-[var(--ss-surface-translucent)] text-ink flex items-center justify-center hover:bg-panel">
                             <ShareIcon size={18} />
                         </button>
-                        <button className="w-10 h-10 rounded-lg bg-white text-ink flex items-center justify-center hover:bg-white/90">
+                        <button className="w-10 h-10 rounded-lg bg-[var(--ss-surface-translucent)] text-ink flex items-center justify-center hover:bg-panel">
                             <MoreIcon size={18} />
                         </button>
                     </div>

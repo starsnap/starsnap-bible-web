@@ -823,7 +823,7 @@ const SnapDetailPage: React.FC = () => {
                     <p className="text-sub text-sm">스냅 정보를 찾을 수 없습니다.</p>
                     <button
                         onClick={() => navigate(-1)}
-                        className="mt-4 h-9 px-5 rounded-xl bg-brand text-ink text-sm font-bold"
+                        className="mt-4 h-9 px-5 rounded-xl bg-brand text-on-brand text-sm font-bold"
                     >
                         돌아가기
                     </button>
@@ -947,13 +947,13 @@ const SnapDetailPage: React.FC = () => {
                         <div className="ml-auto relative" ref={menuRef}>
                             <button
                                 onClick={() => setMenuOpen((prev) => !prev)}
-                                className="h-9 w-9 rounded-xl border border-line bg-white flex items-center justify-center text-sub hover:text-ink hover:border-ink transition-colors"
+                                className="h-9 w-9 rounded-xl border border-line bg-panel flex items-center justify-center text-sub hover:text-ink hover:border-ink transition-colors"
                                 aria-label="스냅 메뉴"
                             >
                                 <MoreIcon size={16} />
                             </button>
                             {menuOpen && (
-                                <div className="absolute right-0 top-11 z-20 w-36 rounded-xl border border-line bg-white shadow-lg p-1.5">
+                                <div className="absolute right-0 top-11 z-20 w-36 rounded-xl border border-line bg-panel shadow-lg p-1.5">
                                     {canEdit && (
                                         <button
                                             onClick={handleGoEditPage}
@@ -1033,7 +1033,7 @@ const SnapDetailPage: React.FC = () => {
                         {currentPhoto > 0 && (
                             <button
                                 onClick={prevPhoto}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur flex items-center justify-center shadow-sm z-10 hover:bg-white transition-colors"
+                                className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-[var(--ss-surface-translucent)] backdrop-blur flex items-center justify-center shadow-sm z-10 hover:bg-panel transition-colors"
                                 aria-label="이전 사진"
                             >
                                 <ChevronLeftIcon size={18} className="text-ink" />
@@ -1043,7 +1043,7 @@ const SnapDetailPage: React.FC = () => {
                         {currentPhoto < photoCount - 1 && (
                             <button
                                 onClick={nextPhoto}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 backdrop-blur flex items-center justify-center shadow-sm z-10 hover:bg-white transition-colors"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-[var(--ss-surface-translucent)] backdrop-blur flex items-center justify-center shadow-sm z-10 hover:bg-panel transition-colors"
                                 aria-label="다음 사진"
                             >
                                 <ChevronRightIcon size={18} className="text-ink" />
@@ -1051,7 +1051,7 @@ const SnapDetailPage: React.FC = () => {
                         )}
                         {/* Photo count badge */}
                         {photoCount > 1 && (
-                            <span className="absolute top-3 right-3 bg-black/50 text-white text-xs px-2.5 py-1 rounded-full z-10">
+                            <span className="absolute top-3 right-3 bg-black/50 text-on-media text-xs px-2.5 py-1 rounded-full z-10">
                                 {currentPhoto + 1} / {photoCount}
                             </span>
                         )}
@@ -1256,7 +1256,7 @@ const SnapDetailPage: React.FC = () => {
                                         className="h-9 w-9 rounded-lg bg-brand flex items-center justify-center disabled:opacity-50 hover:brightness-95 transition"
                                         aria-label="댓글 전송"
                                     >
-                                        <SendIcon size={15} className="text-ink" />
+                                        <SendIcon size={15} className="text-on-brand" />
                                     </button>
                                 </div>
                                 {commentError && (
@@ -1279,7 +1279,7 @@ const SnapDetailPage: React.FC = () => {
             {deleteConfirmOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="presentation">
                     <div
-                        className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl"
+                        className="w-full max-w-sm rounded-lg bg-panel p-5 shadow-xl"
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="delete-snap-title"
@@ -1297,7 +1297,7 @@ const SnapDetailPage: React.FC = () => {
                             </button>
                             <button
                                 type="button"
-                                className="h-9 rounded-md bg-red-600 px-3 text-sm font-medium text-white disabled:opacity-50"
+                                className="h-9 rounded-md bg-danger px-3 text-sm font-medium text-on-danger disabled:opacity-50"
                                 onClick={() => void handleDeleteSnap()}
                                 disabled={menuLoading}
                             >
@@ -1311,7 +1311,7 @@ const SnapDetailPage: React.FC = () => {
             {deleteCommentTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="presentation">
                     <div
-                        className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl"
+                        className="w-full max-w-sm rounded-lg bg-panel p-5 shadow-xl"
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="delete-comment-title"
@@ -1329,7 +1329,7 @@ const SnapDetailPage: React.FC = () => {
                             </button>
                             <button
                                 type="button"
-                                className="h-9 rounded-md bg-red-600 px-3 text-sm font-medium text-white disabled:opacity-50"
+                                className="h-9 rounded-md bg-danger px-3 text-sm font-medium text-on-danger disabled:opacity-50"
                                 onClick={() => deleteCommentTarget && void handleDeleteComment(deleteCommentTarget)}
                                 disabled={deleteCommentLoading}
                             >
@@ -1350,7 +1350,7 @@ const SnapDetailPage: React.FC = () => {
                     />
                     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none">
                         <div className="pointer-events-auto w-full md:w-auto md:max-w-[760px]">
-                            <div className="relative bg-white border border-line shadow-2xl rounded-t-3xl md:rounded-2xl mx-auto w-full max-w-[720px] md:min-w-[640px] md:max-w-[760px] md:max-h-[82vh] md:overflow-y-auto">
+                            <div className="relative bg-panel border border-line shadow-2xl rounded-t-3xl md:rounded-2xl mx-auto w-full max-w-[720px] md:min-w-[640px] md:max-w-[760px] md:max-h-[82vh] md:overflow-y-auto">
                                 <button
                                     type="button"
                                     aria-label="신고 모달 닫기"
@@ -1414,7 +1414,7 @@ const SnapDetailPage: React.FC = () => {
                                                 aria-label="작성자 차단 여부"
                                             >
                                                 <span
-                                                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                                                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-on-media shadow transition-transform ${
                                                         reportBlockUser ? 'translate-x-4' : 'translate-x-0.5'
                                                     }`}
                                                 />
@@ -1427,7 +1427,7 @@ const SnapDetailPage: React.FC = () => {
                                             type="button"
                                             onClick={() => void handleSubmitReport()}
                                             disabled={reportSubmitting}
-                                            className="mt-5 w-full h-11 rounded-xl bg-brand text-ink text-base font-bold hover:brightness-95 disabled:opacity-60"
+                                            className="mt-5 w-full h-11 rounded-xl bg-brand text-on-brand text-base font-bold hover:brightness-95 disabled:opacity-60"
                                         >
                                             {reportSubmitting ? '신고 접수 중...' : '신고하기'}
                                         </button>
@@ -1531,7 +1531,7 @@ const CommentRow: React.FC<CommentRowProps> = ({ comment, isMine, onDelete, onRe
                 <div
                     ref={menuRef}
                     style={{ position: 'fixed', top: menuPosition.top, left: menuPosition.left, width: MENU_WIDTH }}
-                    className="z-50 rounded-xl border border-line bg-white shadow-lg p-1.5"
+                    className="z-50 rounded-xl border border-line bg-panel shadow-lg p-1.5"
                 >
                     {isMine && (
                         <button

@@ -46,17 +46,17 @@ const StarGroupPage: React.FC = () => {
                                     onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                                 />
                             ) : (
-                                <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-muted to-sub" />
+                                <div className="absolute inset-0 h-full w-full bg-gradient-to-br from-media-backdrop-soft to-media-backdrop" />
                             )}
 
                             {/* 어두운 오버레이 */}
                             <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition" />
 
                             {/* 정보 오버레이 */}
-                            <div className="absolute inset-0 flex flex-col justify-end p-4 text-white">
+                            <div className="absolute inset-0 flex flex-col justify-end p-4 text-on-media">
                                 <div className="space-y-1">
                                     <p className="text-lg font-bold truncate leading-tight">{group.name}</p>
-                                    <p className="text-xs text-white/75">
+                                    <p className="text-xs text-on-media/75">
                                         데뷔 {group.debutDate || '-'}
                                     </p>
                                 </div>

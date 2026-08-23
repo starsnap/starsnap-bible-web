@@ -289,7 +289,7 @@ const EditSnapPage: React.FC = () => {
 
             <h1 className="text-2xl font-bold text-ink mt-4">스냅 수정</h1>
 
-            <div className="mt-6 rounded-2xl border border-line bg-white p-6">
+            <div className="mt-6 rounded-2xl border border-line bg-panel p-6">
                 {previewPhoto?.fileKey && (
                     <div className="mb-5 rounded-xl overflow-hidden bg-placeholder h-[240px]">
                         <img
@@ -388,7 +388,7 @@ const EditSnapPage: React.FC = () => {
                                     <button
                                         type="button"
                                         onClick={() => removeStar(star)}
-                                        className="absolute -right-1 -bottom-1 w-6 h-6 rounded-full bg-white border border-line flex items-center justify-center text-sub"
+                                        className="absolute -right-1 -bottom-1 w-6 h-6 rounded-full bg-[var(--ss-surface-translucent)] border border-line flex items-center justify-center text-ink"
                                         aria-label={`${star.name} 제거`}
                                     >
                                         <CloseIcon size={12} />
@@ -431,7 +431,7 @@ const EditSnapPage: React.FC = () => {
                                     <button
                                         type="button"
                                         onClick={() => removeStarGroup(group.id)}
-                                        className="absolute -right-1 -bottom-1 w-6 h-6 rounded-full bg-white border border-line flex items-center justify-center text-sub"
+                                        className="absolute -right-1 -bottom-1 w-6 h-6 rounded-full bg-[var(--ss-surface-translucent)] border border-line flex items-center justify-center text-ink"
                                         aria-label={`${group.name} 제거`}
                                     >
                                         <CloseIcon size={12} />
@@ -448,7 +448,7 @@ const EditSnapPage: React.FC = () => {
                         <p className="text-sm font-bold text-ink">댓글 허용</p>
                         <p className="text-xs text-muted mt-0.5">다른 사용자가 댓글을 남길 수 있어요</p>
                     </div>
-                    <Toggle checked={commentState} onChange={setCommentState} />
+                    <Toggle ariaLabel="댓글 허용" checked={commentState} onChange={setCommentState} />
                 </div>
 
                 {errorMessage && <p className="mt-4 text-sm text-danger">{errorMessage}</p>}
@@ -465,7 +465,7 @@ const EditSnapPage: React.FC = () => {
                         type="button"
                         onClick={() => void handleSubmit()}
                         disabled={submitting}
-                        className="h-11 px-5 rounded-lg bg-brand text-ink text-sm font-bold hover:brightness-95 disabled:opacity-60"
+                        className="h-11 px-5 rounded-lg bg-brand text-on-brand text-sm font-bold hover:brightness-95 disabled:opacity-60"
                     >
                         {submitting ? '저장 중...' : '수정 완료'}
                     </button>
@@ -474,7 +474,7 @@ const EditSnapPage: React.FC = () => {
 
             {starModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-                    <div className="w-[760px] h-[640px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden rounded-3xl bg-white border border-line flex flex-col">
+                    <div className="w-[760px] h-[640px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden rounded-3xl bg-panel border border-line flex flex-col">
                         <div className="h-14 px-6 flex items-center justify-between border-b border-line">
                             <h2 className="text-xl font-bold text-ink">스타 선택</h2>
                             <button
@@ -540,7 +540,7 @@ const EditSnapPage: React.FC = () => {
                                                 <p className="mt-3 text-base font-bold text-ink truncate">{star.name}</p>
                                                 <p className="mt-0.5 text-xs text-muted truncate">{star.nickname || '-'}</p>
                                                 {active && (
-                                                    <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-brand">
+                                                    <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-on-brand">
                                                         <CheckIcon size={12} />
                                                     </span>
                                                 )}
@@ -555,7 +555,7 @@ const EditSnapPage: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => setStarModalOpen(false)}
-                                className="h-9 px-6 rounded-xl border border-line bg-white text-ink font-bold"
+                                className="h-9 px-6 rounded-xl border border-line bg-panel text-ink font-bold"
                             >
                                 취소
                             </button>
@@ -565,7 +565,7 @@ const EditSnapPage: React.FC = () => {
                                     setSelectedStars(modalSelectedStars)
                                     setStarModalOpen(false)
                                 }}
-                                className="h-9 rounded-xl bg-brand px-6 font-bold text-ink"
+                                className="h-9 rounded-xl bg-brand px-6 font-bold text-on-brand"
                             >
                                 확인 ({modalSelectedStars.length})
                             </button>
@@ -576,7 +576,7 @@ const EditSnapPage: React.FC = () => {
 
             {starGroupModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-                    <div className="w-[760px] h-[640px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden rounded-3xl bg-white border border-line flex flex-col">
+                    <div className="w-[760px] h-[640px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-2rem)] overflow-hidden rounded-3xl bg-panel border border-line flex flex-col">
                         <div className="h-14 px-6 flex items-center justify-between border-b border-line">
                             <h2 className="text-xl font-bold text-ink">스타그룹 선택</h2>
                             <button
@@ -641,7 +641,7 @@ const EditSnapPage: React.FC = () => {
                                                 )}
                                                 <p className="mt-3 text-base font-bold text-ink truncate">{group.name}</p>
                                                 {active && (
-                                                    <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-brand">
+                                                    <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-brand text-on-brand">
                                                         <CheckIcon size={12} />
                                                     </span>
                                                 )}
@@ -656,7 +656,7 @@ const EditSnapPage: React.FC = () => {
                             <button
                                 type="button"
                                 onClick={() => setStarGroupModalOpen(false)}
-                                className="h-9 px-6 rounded-xl border border-line bg-white text-ink font-bold"
+                                className="h-9 px-6 rounded-xl border border-line bg-panel text-ink font-bold"
                             >
                                 취소
                             </button>
@@ -666,7 +666,7 @@ const EditSnapPage: React.FC = () => {
                                     setSelectedStarGroups(modalSelectedStarGroups)
                                     setStarGroupModalOpen(false)
                                 }}
-                                className="h-9 rounded-xl bg-brand px-6 font-bold text-ink"
+                                className="h-9 rounded-xl bg-brand px-6 font-bold text-on-brand"
                             >
                                 확인 ({modalSelectedStarGroups.length})
                             </button>
