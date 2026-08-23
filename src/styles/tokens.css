@@ -1,5 +1,7 @@
 /* AUTO-GENERATED from /starsnap-main/starsnap-web/design-system/tokens.json. Do not edit directly. */
 :root {
+  color-scheme: light;
+
   /* Primitive colors */
   --ss-yellow-50: #fffdf2;
   --ss-yellow-100: #fff8cf;
@@ -17,7 +19,8 @@
   --ss-neutral-200: #e2e6ed;
   --ss-neutral-300: #cbd5e1;
   --ss-neutral-400: #98a1b2;
-  --ss-neutral-500: #697386;
+  --ss-neutral-450: #7b8799;
+  --ss-neutral-500: #687285;
   --ss-neutral-600: #505866;
   --ss-neutral-700: #334155;
   --ss-neutral-800: #2a2f3a;
@@ -58,13 +61,42 @@
   --ss-dark-canvas: #121722;
   --ss-dark-surface: #19202c;
   --ss-dark-surface-subtle: #222c3b;
+  --ss-dark-surface-hover: #2a3648;
   --ss-dark-border: #303b4d;
+  --ss-dark-border-strong: #60708a;
   --ss-dark-text: #f4f6fa;
   --ss-dark-text-soft: #e4e8ef;
   --ss-dark-text-subtle: #b4c0d1;
   --ss-dark-text-muted: #8593a8;
   --ss-dark-brand-soft: #4b4420;
-  --ss-dark-danger: #ff6b6b;
+  --ss-dark-danger: #ff7b7b;
+  --ss-dark-danger-strong: #ffb0b0;
+  --ss-dark-danger-muted: #ff9292;
+  --ss-dark-danger-soft: #3d2027;
+  --ss-dark-danger-subtle: #4a2830;
+  --ss-dark-danger-border: #7a3b47;
+  --ss-dark-success: #5ee49a;
+  --ss-dark-success-strong: #9cf3c1;
+  --ss-dark-success-accent: #34d399;
+  --ss-dark-success-soft: #153829;
+  --ss-dark-success-subtle: #1d4632;
+  --ss-dark-success-border: #2d6a4b;
+  --ss-dark-warning: #f6c453;
+  --ss-dark-warning-strong: #ffe39a;
+  --ss-dark-warning-soft: #3d3017;
+  --ss-dark-warning-border: #705821;
+  --ss-dark-info: #7db5ff;
+  --ss-dark-info-strong: #b8d6ff;
+  --ss-dark-info-muted: #60a5fa;
+  --ss-dark-info-soft: #172f4d;
+  --ss-dark-info-subtle: #1f3d63;
+  --ss-dark-info-border: #315f93;
+  --ss-dark-cyan: #67e8f9;
+  --ss-dark-cyan-soft: #12383e;
+  --ss-dark-cyan-hover: #184950;
+  --ss-dark-purple: #d0a3ff;
+  --ss-dark-purple-soft: #352342;
+  --ss-dark-purple-hover: #472d58;
 
   /* Primitive typography */
   --ss-font-sans: 'Pretendard', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans KR', 'Apple SD Gothic Neo', sans-serif;
@@ -103,9 +135,9 @@
   --ss-radius-md: 0.875rem;
   --ss-radius-lg: 1.25rem;
   --ss-radius-full: 999px;
-  --ss-shadow-sm: 0 1px 2px rgb(23 27 36 / 0.05);
-  --ss-shadow-md: 0 12px 32px rgb(23 27 36 / 0.09);
-  --ss-shadow-lg: 0 20px 48px rgb(23 27 36 / 0.14);
+  --ss-shadow-sm: 0 1px 2px var(--ss-shadow-color-soft);
+  --ss-shadow-md: 0 12px 32px var(--ss-shadow-color);
+  --ss-shadow-lg: 0 20px 48px var(--ss-shadow-color-strong);
   --ss-duration-fast: 150ms;
   --ss-duration-normal: 220ms;
   --ss-ease-standard: cubic-bezier(0.2, 0, 0, 1);
@@ -116,22 +148,24 @@
   --ss-surface-subtle: var(--ss-neutral-100);
   --ss-surface-hover: var(--ss-neutral-25);
   --ss-border: var(--ss-neutral-200);
-  --ss-border-strong: var(--ss-neutral-300);
+  --ss-border-strong: var(--ss-neutral-450);
   --ss-text: var(--ss-neutral-900);
   --ss-text-soft: var(--ss-neutral-800);
   --ss-text-subtle: var(--ss-neutral-600);
-  --ss-text-muted: var(--ss-neutral-400);
+  --ss-text-muted: var(--ss-neutral-500);
   --ss-brand: var(--ss-yellow-400);
   --ss-brand-hover: var(--ss-yellow-500);
   --ss-brand-active: var(--ss-yellow-600);
   --ss-brand-soft: var(--ss-yellow-100);
-  --ss-danger: var(--ss-red-600);
-  --ss-danger-strong: var(--ss-red-700);
+  --ss-on-brand: var(--ss-neutral-900);
+  --ss-danger: var(--ss-red-700);
+  --ss-danger-strong: var(--ss-red-800);
   --ss-danger-muted: var(--ss-red-400);
   --ss-danger-soft: var(--ss-red-50);
   --ss-danger-subtle: var(--ss-red-100);
   --ss-danger-border: var(--ss-red-200);
-  --ss-success: var(--ss-green-600);
+  --ss-on-danger: var(--ss-neutral-0);
+  --ss-success: var(--ss-green-700);
   --ss-success-strong: var(--ss-green-800);
   --ss-success-accent: var(--ss-green-400);
   --ss-success-soft: var(--ss-green-50);
@@ -153,7 +187,13 @@
   --ss-purple: var(--ss-purple-700);
   --ss-purple-soft: var(--ss-purple-50);
   --ss-purple-hover: var(--ss-purple-100);
-  --ss-focus-ring: rgb(245 214 59 / 0.42);
+  --ss-media-backdrop-soft: var(--ss-neutral-700);
+  --ss-media-backdrop: var(--ss-neutral-900);
+  --ss-on-media: var(--ss-neutral-0);
+  --ss-emphasis-soft: var(--ss-neutral-700);
+  --ss-emphasis: var(--ss-neutral-900);
+  --ss-on-emphasis: var(--ss-neutral-0);
+  --ss-focus-ring: #8a7210;
   --ss-overlay: rgb(23 27 36 / 0.5);
   --ss-shadow-color-soft: rgb(23 27 36 / 0.06);
   --ss-shadow-color: rgb(23 27 36 / 0.12);
@@ -163,6 +203,8 @@
   --ss-success-glow: rgb(5 150 105 / 0.12);
   --ss-info-border-alpha: rgb(191 219 254 / 0.33);
   --ss-border-strong-alpha: rgb(203 213 225 / 0.33);
+  --ss-header-backdrop: rgb(255 255 255 / 0.92);
+  --ss-nav-backdrop: rgb(255 255 255 / 0.96);
 
   /* Semantic typography */
   --ss-type-display-large-size: var(--ss-font-size-three-xl);
@@ -185,8 +227,8 @@
   --ss-type-micro-weight: var(--ss-font-weight-medium);
 
   /* Component tokens */
-  --ss-header-bg: rgb(255 255 255 / 0.92);
-  --ss-nav-bg: rgb(255 255 255 / 0.96);
+  --ss-header-bg: var(--ss-header-backdrop);
+  --ss-nav-bg: var(--ss-nav-backdrop);
   --ss-card-bg: var(--ss-surface);
   --ss-card-border: var(--ss-border);
   --ss-card-radius: var(--ss-radius-lg);
@@ -196,16 +238,67 @@
 }
 
 html.dark {
+  color-scheme: dark;
   --ss-canvas: var(--ss-dark-canvas);
   --ss-surface: var(--ss-dark-surface);
   --ss-surface-subtle: var(--ss-dark-surface-subtle);
+  --ss-surface-hover: var(--ss-dark-surface-hover);
   --ss-border: var(--ss-dark-border);
+  --ss-border-strong: var(--ss-dark-border-strong);
   --ss-text: var(--ss-dark-text);
   --ss-text-soft: var(--ss-dark-text-soft);
   --ss-text-subtle: var(--ss-dark-text-subtle);
   --ss-text-muted: var(--ss-dark-text-muted);
+  --ss-brand: var(--ss-yellow-400);
+  --ss-brand-hover: var(--ss-yellow-300);
+  --ss-brand-active: var(--ss-yellow-500);
   --ss-brand-soft: var(--ss-dark-brand-soft);
+  --ss-on-brand: var(--ss-neutral-900);
   --ss-danger: var(--ss-dark-danger);
-  --ss-header-bg: rgb(25 32 44 / 0.92);
-  --ss-nav-bg: rgb(25 32 44 / 0.96);
+  --ss-danger-strong: var(--ss-dark-danger-strong);
+  --ss-danger-muted: var(--ss-dark-danger-muted);
+  --ss-danger-soft: var(--ss-dark-danger-soft);
+  --ss-danger-subtle: var(--ss-dark-danger-subtle);
+  --ss-danger-border: var(--ss-dark-danger-border);
+  --ss-on-danger: var(--ss-neutral-900);
+  --ss-success: var(--ss-dark-success);
+  --ss-success-strong: var(--ss-dark-success-strong);
+  --ss-success-accent: var(--ss-dark-success-accent);
+  --ss-success-soft: var(--ss-dark-success-soft);
+  --ss-success-subtle: var(--ss-dark-success-subtle);
+  --ss-success-border: var(--ss-dark-success-border);
+  --ss-warning: var(--ss-dark-warning);
+  --ss-warning-strong: var(--ss-dark-warning-strong);
+  --ss-warning-soft: var(--ss-dark-warning-soft);
+  --ss-warning-border: var(--ss-dark-warning-border);
+  --ss-info: var(--ss-dark-info);
+  --ss-info-strong: var(--ss-dark-info-strong);
+  --ss-info-muted: var(--ss-dark-info-muted);
+  --ss-info-soft: var(--ss-dark-info-soft);
+  --ss-info-subtle: var(--ss-dark-info-subtle);
+  --ss-info-border: var(--ss-dark-info-border);
+  --ss-cyan: var(--ss-dark-cyan);
+  --ss-cyan-soft: var(--ss-dark-cyan-soft);
+  --ss-cyan-hover: var(--ss-dark-cyan-hover);
+  --ss-purple: var(--ss-dark-purple);
+  --ss-purple-soft: var(--ss-dark-purple-soft);
+  --ss-purple-hover: var(--ss-dark-purple-hover);
+  --ss-media-backdrop-soft: var(--ss-neutral-700);
+  --ss-media-backdrop: var(--ss-neutral-900);
+  --ss-on-media: var(--ss-neutral-0);
+  --ss-emphasis-soft: var(--ss-neutral-700);
+  --ss-emphasis: var(--ss-dark-text);
+  --ss-on-emphasis: var(--ss-neutral-900);
+  --ss-focus-ring: #ffe55b;
+  --ss-overlay: rgb(0 0 0 / 0.64);
+  --ss-shadow-color-soft: rgb(0 0 0 / 0.18);
+  --ss-shadow-color: rgb(0 0 0 / 0.32);
+  --ss-shadow-color-strong: rgb(0 0 0 / 0.5);
+  --ss-surface-translucent: rgb(25 32 44 / 0.88);
+  --ss-brand-glow: rgb(255 229 91 / 0.18);
+  --ss-success-glow: rgb(94 228 154 / 0.14);
+  --ss-info-border-alpha: rgb(125 181 255 / 0.38);
+  --ss-border-strong-alpha: rgb(70 82 105 / 0.55);
+  --ss-header-backdrop: rgb(25 32 44 / 0.92);
+  --ss-nav-backdrop: rgb(25 32 44 / 0.96);
 }

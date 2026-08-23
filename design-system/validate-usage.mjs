@@ -26,6 +26,28 @@ function report(file, rule, matches) {
   });
 }
 
+function extractStringLiterals(content) {
+  const patterns = [
+    /"(?:\\.|[^"\\])*"/gs,
+    /'(?:\\.|[^'\\])*'/gs,
+    /`(?:\\.|[^`\\])*`/gs,
+  ];
+
+  return patterns.flatMap((pattern) => content.match(pattern) ?? []);
+}
+
+function findForbiddenClassPair(content, background, foreground) {
+  return content.split(/\r?\n/)
+    .flatMap((line) => extractStringLiterals(line))
+    .filter((literal) => !(literal.startsWith('`') && literal.includes('${')))
+    .filter((literal) => {
+      const tokens = literal.slice(1, -1).split(/\s+/);
+      return tokens.some((token) => background.test(token)) &&
+        tokens.some((token) => foreground.test(token));
+    })
+    .map(() => `${background.source} + ${foreground.source}`);
+}
+
 const cssFiles = [
   path.join(workspaceRoot, 'starsnap-admin/starsnap-admin-web/src/styles.css'),
   path.join(workspaceRoot, 'starsnap-hub/starsnap-hub-web/src/styles.css'),
@@ -47,6 +69,18 @@ for (const file of walk(mainWebRoot, ['.ts', '.tsx', '.css'])) {
   const content = fs.readFileSync(file, 'utf8');
   report(file, 'raw six/eight-digit hex color', content.match(/#[0-9a-f]{6}(?:[0-9a-f]{2})?\b/gi) ?? []);
   report(file, 'arbitrary Tailwind font-size', content.match(/text-\[[0-9.]+(?:px|rem)\]/gi) ?? []);
+  report(
+    file,
+    'fixed Tailwind palette color (use a semantic StarSnap token)',
+    content.match(/\b(?:bg|text|border|ring|fill|stroke|from|via|to)-(?:white|gray|slate|zinc|neutral|red|blue|green|amber|yellow|cyan|purple|indigo|pink|rose|orange)(?:-[0-9]{2,3})?(?:\/(?:\[[^\]]+\]|[0-9]+))?\b/gi) ?? [],
+  );
+  report(file, 'brand background with theme text', findForbiddenClassPair(content, /^bg-brand$/, /^text-ink$/));
+  report(file, 'emphasis background with literal white text', findForbiddenClassPair(content, /^bg-ink$/, /^text-white$/));
+  report(
+    file,
+    'danger background with literal white text',
+    findForbiddenClassPair(content, /^(?:bg-danger|bg-red-[0-9]+)$/, /^text-white$/),
+  );
 }
 
 const androidRoot = path.join(workspaceRoot, 'starsnap-main/starsnap-android');

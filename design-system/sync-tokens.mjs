@@ -7,8 +7,12 @@ const workspaceRoot = path.resolve(here, '../../..');
 const tokens = JSON.parse(fs.readFileSync(path.join(here, 'tokens.json'), 'utf8'));
 
 const generatedHeader = '/* AUTO-GENERATED from /starsnap-main/starsnap-web/design-system/tokens.json. Do not edit directly. */';
+const generatedXmlHeader = '<!-- AUTO-GENERATED from /starsnap-main/starsnap-web/design-system/tokens.json. Do not edit directly. -->';
 const colorPrimitives = tokens.color.primitive;
 const semanticColors = tokens.color.semantic;
+const darkSemanticColors = tokens.color.theme.dark;
+const lightEffects = tokens.color.effect.light;
+const darkEffects = tokens.color.effect.dark;
 
 const kebab = (value) => value.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 const cssColorVar = (reference) => {
@@ -28,8 +32,32 @@ const fontWeightName = {
   bold: 'Bold',
 };
 
+function assertMatchingKeys(label, light, dark) {
+  const lightKeys = Object.keys(light).sort();
+  const darkKeys = Object.keys(dark).sort();
+  if (JSON.stringify(lightKeys) !== JSON.stringify(darkKeys)) {
+    const missing = lightKeys.filter((key) => !darkKeys.includes(key));
+    const extra = darkKeys.filter((key) => !lightKeys.includes(key));
+    throw new Error(`${label} theme keys differ. missing=[${missing.join(', ')}] extra=[${extra.join(', ')}]`);
+  }
+}
+
+function assertColorReferences(label, colors) {
+  for (const [name, reference] of Object.entries(colors)) {
+    const [group, shade] = reference.split('.');
+    if (!colorPrimitives[group] || colorPrimitives[group][shade] === undefined) {
+      throw new Error(`${label}.${name} references unknown primitive: ${reference}`);
+    }
+  }
+}
+
+assertMatchingKeys('semantic color', semanticColors, darkSemanticColors);
+assertMatchingKeys('effect color', lightEffects, darkEffects);
+assertColorReferences('color.semantic', semanticColors);
+assertColorReferences('color.theme.dark', darkSemanticColors);
+
 function generateCss() {
-  const lines = [generatedHeader, ':root {', '  /* Primitive colors */'];
+  const lines = [generatedHeader, ':root {', '  color-scheme: light;', '', '  /* Primitive colors */'];
 
   for (const [group, shades] of Object.entries(colorPrimitives)) {
     for (const [shade, value] of Object.entries(shades)) {
@@ -53,9 +81,9 @@ function generateCss() {
   lines.push('', '  /* Primitive spacing, geometry, and motion */');
   for (const [name, value] of Object.entries(tokens.space)) lines.push(`  --ss-space-${name}: ${value};`);
   for (const [name, value] of Object.entries(tokens.radius)) lines.push(`  --ss-radius-${name}: ${value};`);
-  lines.push('  --ss-shadow-sm: 0 1px 2px rgb(23 27 36 / 0.05);');
-  lines.push('  --ss-shadow-md: 0 12px 32px rgb(23 27 36 / 0.09);');
-  lines.push('  --ss-shadow-lg: 0 20px 48px rgb(23 27 36 / 0.14);');
+  lines.push('  --ss-shadow-sm: 0 1px 2px var(--ss-shadow-color-soft);');
+  lines.push('  --ss-shadow-md: 0 12px 32px var(--ss-shadow-color);');
+  lines.push('  --ss-shadow-lg: 0 20px 48px var(--ss-shadow-color-strong);');
   lines.push(`  --ss-duration-fast: ${tokens.motion.fast};`);
   lines.push(`  --ss-duration-normal: ${tokens.motion.normal};`);
   lines.push(`  --ss-ease-standard: ${tokens.motion.ease};`);
@@ -64,16 +92,9 @@ function generateCss() {
   for (const [name, reference] of Object.entries(semanticColors)) {
     lines.push(`  --ss-${kebab(name)}: ${cssColorVar(reference)};`);
   }
-  lines.push('  --ss-focus-ring: rgb(245 214 59 / 0.42);');
-  lines.push('  --ss-overlay: rgb(23 27 36 / 0.5);');
-  lines.push('  --ss-shadow-color-soft: rgb(23 27 36 / 0.06);');
-  lines.push('  --ss-shadow-color: rgb(23 27 36 / 0.12);');
-  lines.push('  --ss-shadow-color-strong: rgb(23 27 36 / 0.24);');
-  lines.push('  --ss-surface-translucent: rgb(255 255 255 / 0.86);');
-  lines.push('  --ss-brand-glow: rgb(255 229 91 / 0.16);');
-  lines.push('  --ss-success-glow: rgb(5 150 105 / 0.12);');
-  lines.push('  --ss-info-border-alpha: rgb(191 219 254 / 0.33);');
-  lines.push('  --ss-border-strong-alpha: rgb(203 213 225 / 0.33);');
+  for (const [name, value] of Object.entries(lightEffects)) {
+    lines.push(`  --ss-${kebab(name)}: ${value};`);
+  }
 
   lines.push('', '  /* Semantic typography */');
   for (const [name, role] of Object.entries(tokens.typography.roles)) {
@@ -82,8 +103,8 @@ function generateCss() {
   }
 
   lines.push('', '  /* Component tokens */');
-  lines.push('  --ss-header-bg: rgb(255 255 255 / 0.92);');
-  lines.push('  --ss-nav-bg: rgb(255 255 255 / 0.96);');
+  lines.push('  --ss-header-bg: var(--ss-header-backdrop);');
+  lines.push('  --ss-nav-bg: var(--ss-nav-backdrop);');
   lines.push('  --ss-card-bg: var(--ss-surface);');
   lines.push('  --ss-card-border: var(--ss-border);');
   lines.push('  --ss-card-radius: var(--ss-radius-lg);');
@@ -92,12 +113,13 @@ function generateCss() {
   lines.push(`  --ss-control-height: ${tokens.control.height};`);
   lines.push('}');
 
-  lines.push('', 'html.dark {');
-  for (const name of ['canvas', 'surface', 'surfaceSubtle', 'border', 'text', 'textSoft', 'textSubtle', 'textMuted', 'brandSoft', 'danger']) {
-    lines.push(`  --ss-${kebab(name)}: var(--ss-dark-${kebab(name)});`);
+  lines.push('', 'html.dark {', '  color-scheme: dark;');
+  for (const [name, reference] of Object.entries(darkSemanticColors)) {
+    lines.push(`  --ss-${kebab(name)}: ${cssColorVar(reference)};`);
   }
-  lines.push('  --ss-header-bg: rgb(25 32 44 / 0.92);');
-  lines.push('  --ss-nav-bg: rgb(25 32 44 / 0.96);');
+  for (const [name, value] of Object.entries(darkEffects)) {
+    lines.push(`  --ss-${kebab(name)}: ${value};`);
+  }
   lines.push('}');
 
   return `${lines.join('\n')}\n`;
@@ -106,7 +128,7 @@ function generateCss() {
 function generateTypeScript() {
   const colorEntries = Object.keys(semanticColors)
     .map((name) => `    ${name}: 'var(--ss-${kebab(name)})',`)
-    .join('\n');
+    .join('\n\n');
   const sizeEntries = Object.keys(tokens.typography.size)
     .map((name) => `    ${name}: 'var(--ss-font-size-${kebab(name)})',`)
     .join('\n');
@@ -122,8 +144,18 @@ function generateTypeScript() {
 }
 
 function generateAndroidColors() {
-  const semanticEntries = Object.entries(semanticColors)
-    .map(([name, reference]) => `    val ${kotlinName(name)} = Color(${composeColor(resolveColor(reference))})`)
+  const semanticProperties = Object.keys(semanticColors)
+    .map((name) => `    val ${kotlinName(name)}: Color,`)
+    .join('\n');
+  const lightEntries = Object.entries(semanticColors)
+    .map(([name, reference]) => `    ${kotlinName(name)} = Color(${composeColor(resolveColor(reference))}),`)
+    .join('\n');
+  const darkEntries = Object.entries(darkSemanticColors)
+    .map(([name, reference]) => `    ${kotlinName(name)} = Color(${composeColor(resolveColor(reference))}),`)
+    .join('\n');
+  const semanticAccessors = Object.keys(semanticColors)
+    .map((name) => `    val ${kotlinName(name)}: Color\n` +
+      `        @Composable @ReadOnlyComposable get() = LocalStarSnapColors.current.${kotlinName(name)}`)
     .join('\n');
   const brandEntries = Object.entries(colorPrimitives.yellow)
     .map(([shade, value]) => `    val yellow${shade} = Color(${composeColor(value)})`)
@@ -131,8 +163,17 @@ function generateAndroidColors() {
 
   return `// AUTO-GENERATED from /starsnap-main/starsnap-web/design-system/tokens.json. Do not edit directly.\n` +
 `package com.photo.starsnap.designsystem\n\n` +
+`import androidx.compose.runtime.Composable\n` +
+`import androidx.compose.runtime.Immutable\n` +
+`import androidx.compose.runtime.ReadOnlyComposable\n` +
+`import androidx.compose.runtime.staticCompositionLocalOf\n` +
 `import androidx.compose.ui.graphics.Color\n\n` +
-`object StarSnapColor {\n${semanticEntries}\n\n${brandEntries}\n}\n`;
+`@Immutable\n` +
+`data class StarSnapColors(\n${semanticProperties}\n)\n\n` +
+`val StarSnapLightColors = StarSnapColors(\n${lightEntries}\n)\n\n` +
+`val StarSnapDarkColors = StarSnapColors(\n${darkEntries}\n)\n\n` +
+`internal val LocalStarSnapColors = staticCompositionLocalOf { StarSnapLightColors }\n\n` +
+`object StarSnapColor {\n${semanticAccessors}\n\n${brandEntries}\n}\n`;
 }
 
 function generateAndroidTypography() {
@@ -145,18 +186,26 @@ function generateAndroidTypography() {
       `        fontWeight = FontWeight.${fontWeightName[role.weight]},\n` +
       `        fontSize = StarSnapFontSize.${role.size},\n` +
       `        lineHeight = ${role.lineHeightSp}.sp,\n` +
-      `        color = StarSnapColor.text,\n` +
+      `        color = Color.Unspecified,\n` +
       `    )`)
     .join('\n\n');
 
   return `// AUTO-GENERATED from /starsnap-main/starsnap-web/design-system/tokens.json. Do not edit directly.\n` +
 `package com.photo.starsnap.designsystem.text\n\n` +
+`import androidx.compose.ui.graphics.Color\n` +
 `import androidx.compose.ui.text.TextStyle\n` +
 `import androidx.compose.ui.text.font.FontWeight\n` +
 `import androidx.compose.ui.unit.sp\n` +
-`import com.photo.starsnap.designsystem.StarSnapColor\n\n` +
+`\n` +
 `object StarSnapFontSize {\n${sizeEntries}\n}\n\n` +
 `object StarSnapTypography {\n${roleEntries}\n}\n`;
+}
+
+function generateAndroidThemeColors(colors) {
+  return `${generatedXmlHeader}\n` +
+`<resources>\n` +
+`    <color name="starsnap_canvas">${resolveColor(colors.canvas)}</color>\n` +
+`</resources>\n`;
 }
 
 const css = generateCss();
@@ -167,6 +216,8 @@ const targets = new Map([
   ['starsnap-main/starsnap-web/src/styles/designTokens.ts', generateTypeScript()],
   ['starsnap-main/starsnap-android/core/designsystem/src/main/java/com/photo/starsnap/designsystem/StarSnapColor.kt', generateAndroidColors()],
   ['starsnap-main/starsnap-android/core/designsystem/src/main/java/com/photo/starsnap/designsystem/text/StarSnapTypography.kt', generateAndroidTypography()],
+  ['starsnap-main/starsnap-android/core/designsystem/src/main/res/values/colors.xml', generateAndroidThemeColors(semanticColors)],
+  ['starsnap-main/starsnap-android/core/designsystem/src/main/res/values-night/colors.xml', generateAndroidThemeColors(darkSemanticColors)],
 ]);
 
 const mode = process.argv[2] ?? '--check';

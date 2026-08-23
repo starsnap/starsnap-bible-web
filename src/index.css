@@ -33,14 +33,67 @@
   /* StarSnap design tokens (Figma) */
   --color-ink: var(--ss-text);
   --color-ink-soft: var(--ss-text-soft);
+  --color-canvas: var(--ss-canvas);
   --color-surface: var(--ss-canvas);
+  --color-panel: var(--ss-surface);
+  --color-panel-subtle: var(--ss-surface-subtle);
+  --color-panel-hover: var(--ss-surface-hover);
   --color-line: var(--ss-border);
+  --color-line-strong: var(--ss-border-strong);
   --color-placeholder: var(--ss-surface-subtle);
   --color-sub: var(--ss-text-subtle);
   --color-muted: var(--ss-text-muted);
   --color-brand: var(--ss-brand);
+  --color-brand-hover: var(--ss-brand-hover);
+  --color-brand-active: var(--ss-brand-active);
   --color-brand-soft: var(--ss-brand-soft);
+  --color-on-brand: var(--ss-on-brand);
   --color-danger: var(--ss-danger);
+  --color-danger-strong: var(--ss-danger-strong);
+  --color-danger-muted: var(--ss-danger-muted);
+  --color-danger-soft: var(--ss-danger-soft);
+  --color-danger-subtle: var(--ss-danger-subtle);
+  --color-danger-border: var(--ss-danger-border);
+  --color-on-danger: var(--ss-on-danger);
+  --color-success: var(--ss-success);
+  --color-success-strong: var(--ss-success-strong);
+  --color-success-accent: var(--ss-success-accent);
+  --color-success-soft: var(--ss-success-soft);
+  --color-success-subtle: var(--ss-success-subtle);
+  --color-success-border: var(--ss-success-border);
+  --color-warning: var(--ss-warning);
+  --color-warning-strong: var(--ss-warning-strong);
+  --color-warning-soft: var(--ss-warning-soft);
+  --color-warning-border: var(--ss-warning-border);
+  --color-info: var(--ss-info);
+  --color-info-strong: var(--ss-info-strong);
+  --color-info-muted: var(--ss-info-muted);
+  --color-info-soft: var(--ss-info-soft);
+  --color-info-subtle: var(--ss-info-subtle);
+  --color-info-border: var(--ss-info-border);
+  --color-on-info: var(--ss-on-danger);
+  --color-cyan: var(--ss-cyan);
+  --color-cyan-soft: var(--ss-cyan-soft);
+  --color-cyan-hover: var(--ss-cyan-hover);
+  --color-purple: var(--ss-purple);
+  --color-purple-soft: var(--ss-purple-soft);
+  --color-purple-hover: var(--ss-purple-hover);
+  --color-media-backdrop-soft: var(--ss-media-backdrop-soft);
+  --color-media-backdrop: var(--ss-media-backdrop);
+  --color-on-media: var(--ss-on-media);
+  --color-emphasis-soft: var(--ss-emphasis-soft);
+  --color-emphasis: var(--ss-emphasis);
+  --color-on-emphasis: var(--ss-on-emphasis);
+}
+
+html {
+  color-scheme: light;
+  background-color: var(--ss-canvas);
+  transition: background-color var(--ss-duration-normal) var(--ss-ease-standard);
+}
+
+html.dark {
+  color-scheme: dark;
 }
 
 body {
@@ -48,10 +101,50 @@ body {
   font-family: var(--font-sans);
   font-size: var(--ss-font-size-base);
   line-height: var(--ss-line-height-normal);
-  background-color: var(--color-surface);
+  min-height: 100vh;
+  background-color: var(--ss-canvas);
   color: var(--color-ink);
+  transition: background-color var(--ss-duration-normal) var(--ss-ease-standard),
+    color var(--ss-duration-normal) var(--ss-ease-standard);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+:where(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  select,
+  textarea
+) {
+  background-color: var(--ss-surface);
+  color: var(--ss-text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--ss-text-muted);
+}
+
+option {
+  background-color: var(--ss-surface);
+  color: var(--ss-text);
+}
+
+input,
+select,
+textarea {
+  accent-color: var(--ss-brand);
+}
+
+html.dark input:-webkit-autofill,
+html.dark input:-webkit-autofill:hover,
+html.dark input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ss-text);
+  box-shadow: 0 0 0 1000px var(--ss-surface) inset;
+}
+
+::selection {
+  background: var(--ss-brand-soft);
+  color: var(--ss-text);
 }
 
 button,
@@ -63,9 +156,20 @@ textarea {
   transition-timing-function: var(--ss-ease-standard);
 }
 
-:focus-visible {
+:focus-visible:not(:disabled) {
+  --tw-ring-color: var(--ss-focus-ring);
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-inset-ring-shadow: 0 0 #0000;
   outline: 3px solid var(--ss-focus-ring);
   outline-offset: 2px;
+}
+
+:where(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  select,
+  textarea
+):not(.border-danger) {
+  border-color: var(--ss-border-strong);
 }
 
 button:disabled {

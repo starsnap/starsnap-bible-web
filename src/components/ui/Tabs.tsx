@@ -16,7 +16,7 @@ const Tabs: React.FC<Props> = ({ items, active, onChange }) => {
                         <button
                             key={item}
                             onClick={() => onChange(item)}
-                            className={`relative pb-3 text-sm sm:text-body-sm whitespace-nowrap transition-colors ${
+                            className={`relative flex min-h-11 items-center px-1 text-sm sm:text-body-sm whitespace-nowrap transition-colors ${
                                 isActive ? 'text-ink font-bold' : 'text-muted hover:text-sub'
                             }`}
                         >
