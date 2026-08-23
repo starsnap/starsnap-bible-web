@@ -29,7 +29,7 @@ const LoginPage: React.FC = () => {
 
             if (resp.status === 200 && resp.data) {
                 queryClient.clear();
-                token.setToken('auth-state', 'true');
+                token.markAuthenticated();
                 navigate('/');
             } else {
                 setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
@@ -53,7 +53,7 @@ const LoginPage: React.FC = () => {
     };
 
     const inputClass =
-        'w-full h-12 rounded-xl border border-line bg-white px-4 text-sm text-ink placeholder:text-muted hover:border-muted focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/30';
+        'w-full h-12 rounded-xl border border-line bg-panel px-4 text-sm text-ink placeholder:text-muted hover:border-muted focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/30';
 
     return (
         <div
@@ -62,7 +62,7 @@ const LoginPage: React.FC = () => {
                 background: 'radial-gradient(circle at 18% 14%, var(--ss-brand-soft) 0, transparent 30%), radial-gradient(circle at 86% 86%, var(--ss-border) 0, transparent 34%), var(--ss-canvas)',
             }}
         >
-            <div className="w-full max-w-[400px] bg-white rounded-[24px] border border-white/80 shadow-[var(--ss-shadow-md)] px-6 py-8 sm:px-9 sm:py-10">
+            <div className="w-full max-w-[400px] bg-panel rounded-[24px] border border-line shadow-[var(--ss-shadow-md)] px-6 py-8 sm:px-9 sm:py-10">
                 <div className="text-center">
                     <h1 className="flex items-center justify-center gap-2.5 text-2xl font-extrabold tracking-tight text-ink">
                         <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-soft" aria-hidden>
@@ -110,7 +110,7 @@ const LoginPage: React.FC = () => {
 
                     <button
                         type="submit"
-                        className="h-12 rounded-xl mt-1 font-bold text-ink bg-brand shadow-sm hover:brightness-95"
+                        className="h-12 rounded-xl mt-1 font-bold text-on-brand bg-brand shadow-sm hover:brightness-95"
                         disabled={!isEnabled}
                     >
                         {loading ? '로그인 중...' : '로그인'}

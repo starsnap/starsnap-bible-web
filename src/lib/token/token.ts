@@ -1,23 +1,37 @@
-import cookie from '../cookie/cookie'
-import {ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY} from "../../constant/token/token.constant";
+const AUTHENTICATED_MARKER = 'starsnap-authenticated';
+const LEGACY_AUTH_STATE = 'auth-state';
+const LEGACY_JWT_KEYS = ['access-token', 'refresh-token'];
 
-class Token {
-    public getToken(key: string): string | undefined {
-        return cookie.getCookie(key);
+class SessionState {
+    public markAuthenticated(): void {
+        localStorage.setItem(AUTHENTICATED_MARKER, 'true');
+        localStorage.removeItem(LEGACY_AUTH_STATE);
+        this.clearLegacyJwtValues();
     }
 
-    public setToken(key: string, token: string): void {
-        cookie.setCookie(key, token);
+    public clear(): void {
+        localStorage.removeItem(AUTHENTICATED_MARKER);
+        localStorage.removeItem(LEGACY_AUTH_STATE);
+        this.clearLegacyJwtValues();
     }
 
-    public clearToken() {
-        cookie.removeCookie(ACCESS_TOKEN_KEY);
-        cookie.removeCookie(REFRESH_TOKEN_KEY);
+    public isAuthenticated(): boolean {
+        const authenticated =
+            localStorage.getItem(AUTHENTICATED_MARKER) === 'true' ||
+            localStorage.getItem(LEGACY_AUTH_STATE) === 'true';
+
+        if (authenticated) {
+            localStorage.setItem(AUTHENTICATED_MARKER, 'true');
+            localStorage.removeItem(LEGACY_AUTH_STATE);
+            this.clearLegacyJwtValues();
+        }
+
+        return authenticated;
     }
 
-    public haveAccessToken(): Boolean {
-        return !(cookie.getCookie(ACCESS_TOKEN_KEY) === undefined)
+    private clearLegacyJwtValues(): void {
+        LEGACY_JWT_KEYS.forEach(key => localStorage.removeItem(key));
     }
 }
 
-export default new Token();
+export default new SessionState();

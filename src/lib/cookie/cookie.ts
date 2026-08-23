@@ -18,4 +18,6 @@ class Cookie {
     }
 }
 
-export default new Cookie();
+const cookie = new Cookie();
+
+export default cookie;

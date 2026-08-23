@@ -220,7 +220,7 @@ const OauthSignupModal = () => {
                                         border: 'none',
                                         borderRadius: '5px',
                                         backgroundColor: (loading || isChecking || isDuplicateUsername) ? CustomColor.button : CustomColor.yellow_500,
-                                        color: (loading || isChecking || isDuplicateUsername) ? CustomColor.gray : CustomColor.light_black,
+                                        color: (loading || isChecking || isDuplicateUsername) ? CustomColor.gray : 'var(--ss-on-brand)',
                                         cursor: (loading || isChecking || isDuplicateUsername) ? 'not-allowed' : 'pointer',
                                         fontSize: CustomFontSize.label
                                     }}
@@ -274,7 +274,7 @@ const OauthSignupModal = () => {
                                         border: 'none',
                                         borderRadius: '5px',
                                         backgroundColor: CustomColor.yellow_500,
-                                        color: CustomColor.light_black,
+                                        color: 'var(--ss-on-brand)',
                                         cursor: 'pointer',
                                         fontSize: CustomFontSize.label,
                                         fontWeight: 700,

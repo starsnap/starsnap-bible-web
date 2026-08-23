@@ -5,6 +5,7 @@ const useSignUpModal = () => {
     const [username, setUsername] = useState("")
     const [personalInformationConsent, setPersonalInformationConsent] = useState(false)
     const [termsofUse, setTermsofUse] = useState(false)
+    const [googleToken, setGoogleToken] = useState<string | null>(null)
     // 이용 약관
 
     return {
@@ -15,7 +16,9 @@ const useSignUpModal = () => {
         personalInformationConsent,
         setPersonalInformationConsent,
         termsofUse,
-        setTermsofUse
+        setTermsofUse,
+        googleToken,
+        setGoogleToken
     };
 }
 

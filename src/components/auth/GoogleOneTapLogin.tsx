@@ -1,12 +1,11 @@
 import {useGoogleOneTapLogin} from "@react-oauth/google";
 import token from "../../lib/token/token";
-import {ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY} from "../../constant/token/token.constant"
 import CustomAxios from "../../lib/axios/CustomAxios"
-import useSignUpModal from "../../hooks/useSignUpModal"
+import {useSignUpModalContext} from "../../context/SignUpModalContext"
 
 
 export function GoogleOneTapLogin() {
-    const {setShowModal} = useSignUpModal();
+    const {setShowModal, setGoogleToken, setUsername} = useSignUpModalContext();
     useGoogleOneTapLogin({
         onSuccess: credentialResponse => {
 
@@ -15,14 +14,19 @@ export function GoogleOneTapLogin() {
                 type: 'google'
             }).then(res => {
                 if (res.status === 200) {
-                    token.setToken(ACCESS_TOKEN_KEY, res.data.accessToken);
-                    token.setToken(REFRESH_TOKEN_KEY, res.data.refreshToken);
+                    token.markAuthenticated();
                 }
             }).catch(err => {
-                if (err.status === 404) {
+                if (err.response?.status === 409) {
+                    // 사용자 없음 - 회원가입 모달 띄우기
+                    setGoogleToken(credentialResponse.credential as string);
+                    setUsername("");
+                    setShowModal(true)
+                } else if (err.response?.status === 404) {
                     console.log("404")
                     setShowModal(true)
                 }
+                console.log(err)
             })
         },
         onError: () => {

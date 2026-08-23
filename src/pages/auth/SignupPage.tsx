@@ -199,7 +199,6 @@ const SignupPage: React.FC = () => {
             setResultState('ERROR');
             return;
         }
-        if (resp.token) localStorage.setItem('token', resp.token);
         setSuccessNextUrl(resp.next ?? null);
         setResultState('SUCCESS');
     };
@@ -230,8 +229,8 @@ const SignupPage: React.FC = () => {
 
     if (resultState !== 'FORM') {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_18%_14%,var(--ss-brand-soft)_0,transparent_30%),radial-gradient(circle_at_86%_86%,#e9eef7_0,transparent_34%),var(--ss-canvas)] px-4 py-10">
-                <div className="w-full max-w-[460px] rounded-[24px] border border-white/80 bg-white px-6 py-8 shadow-[var(--ss-shadow-md)] sm:px-9 sm:py-10">
+            <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_18%_14%,var(--ss-brand-soft)_0,transparent_30%),radial-gradient(circle_at_86%_86%,var(--ss-info-soft)_0,transparent_34%),var(--ss-canvas)] px-4 py-10">
+                <div className="w-full max-w-[460px] rounded-[24px] border border-line bg-panel px-6 py-8 shadow-[var(--ss-shadow-md)] sm:px-9 sm:py-10">
                     <div className="flex gap-1.5">
                         {STEP_META.map((_, i) => (
                             <span key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? 'bg-brand' : 'bg-line'}`} />
@@ -260,7 +259,7 @@ const SignupPage: React.FC = () => {
                     {resultState !== 'LOADING' && (
                         <button
                             onClick={handleResultAction}
-                            className="mt-6 w-full h-12 rounded-lg font-bold text-ink transition bg-brand hover:brightness-95"
+                            className="mt-6 w-full h-12 rounded-lg font-bold text-on-brand transition bg-brand hover:brightness-95"
                         >
                             {resultState === 'SUCCESS' ? '로그인으로 이동' : '다시 시도'}
                         </button>
@@ -307,7 +306,7 @@ const SignupPage: React.FC = () => {
             case 'ERROR':
                 return { text: '인증번호가 일치하지 않습니다.', className: 'text-danger' };
             case 'SUCCESS':
-                return { text: '이메일 인증이 완료되었습니다.', className: 'text-emerald-500' };
+            return { text: '이메일 인증이 완료되었습니다.', className: 'text-success' };
             case 'LOADING':
                 return { text: emailSending ? '인증번호를 전송하고 있습니다...' : '인증번호를 확인하고 있습니다...', className: 'text-muted' };
             case 'RESEND':
@@ -322,8 +321,8 @@ const SignupPage: React.FC = () => {
     const formattedVerifyTimer = `${String(Math.floor(verifyTimer / 60)).padStart(2, '0')}:${String(verifyTimer % 60).padStart(2, '0')}`;
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_18%_14%,var(--ss-brand-soft)_0,transparent_30%),radial-gradient(circle_at_86%_86%,#e9eef7_0,transparent_34%),var(--ss-canvas)] px-4 py-10">
-            <div className="w-full max-w-[460px] rounded-[24px] border border-white/80 bg-white px-6 py-8 shadow-[var(--ss-shadow-md)] sm:px-9 sm:py-10">
+        <div className="min-h-screen flex items-center justify-center bg-[radial-gradient(circle_at_18%_14%,var(--ss-brand-soft)_0,transparent_30%),radial-gradient(circle_at_86%_86%,var(--ss-info-soft)_0,transparent_34%),var(--ss-canvas)] px-4 py-10">
+            <div className="w-full max-w-[460px] rounded-[24px] border border-line bg-panel px-6 py-8 shadow-[var(--ss-shadow-md)] sm:px-9 sm:py-10">
                     {/* progress */}
                     <div className="flex gap-1.5">
                         {STEP_META.map((_, i) => (
@@ -466,7 +465,7 @@ const SignupPage: React.FC = () => {
                                             }}
                                             id={`signup-verify-${index}`}
                                             disabled={isEmailVerified || verifyTimer === 0 || emailVerifying}
-                                            className="h-[72px] w-[60px] rounded-xl border border-line bg-white text-center text-3xl text-ink focus:outline-none focus:ring-1 focus:ring-brand disabled:bg-surface"
+                                            className="h-[72px] w-[60px] rounded-xl border border-line bg-panel text-center text-3xl text-ink focus:outline-none focus:ring-1 focus:ring-brand disabled:bg-surface"
                                         />
                                     ))}
                                 </div>
@@ -509,8 +508,8 @@ const SignupPage: React.FC = () => {
                         onClick={primaryButtonDisabled ? undefined : handlePrimaryAction}
                         disabled={primaryButtonDisabled}
                         aria-disabled={primaryButtonDisabled}
-                        className={`mt-6 h-12 w-full rounded-xl font-bold text-ink shadow-sm ${
-                            primaryButtonDisabled ? 'bg-brand-soft' : 'bg-brand hover:brightness-95'
+                        className={`mt-6 h-12 w-full rounded-xl font-bold shadow-sm ${
+                            primaryButtonDisabled ? 'bg-brand-soft text-ink' : 'bg-brand text-on-brand hover:brightness-95'
                         }`}
                         style={{
                             opacity: loading || emailSending || emailVerifying ? 0.8 : 1,
@@ -569,7 +568,7 @@ const Field: React.FC<FieldProps> = ({
     const helperClass = errorText
         ? 'text-danger'
         : valid && okText
-        ? 'text-emerald-500'
+                                                ? 'text-success'
         : infoText
         ? 'text-muted'
         : 'text-transparent';
@@ -588,7 +587,7 @@ const Field: React.FC<FieldProps> = ({
                     onKeyDown={(e) => e.key === 'Enter' && onEnter?.()}
                 />
                 {valid && (
-                    <CheckIcon size={18} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-emerald-500" />
+                                            <CheckIcon size={18} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-success" />
                 )}
             </div>
             <p className={`mt-2 text-sm ${reserveHelperSpace ? 'min-h-[20px]' : ''} ${helperClass}`}>{helperText}</p>
@@ -602,14 +601,14 @@ const CheckRow: React.FC<CheckRowProps> = ({ checked, onChange, label }) => (
     <button
         type="button"
         onClick={() => onChange(!checked)}
-        className="w-full flex items-center gap-3 h-12 px-4 rounded-lg border border-line bg-surface text-left"
+        className="w-full flex items-center gap-3 h-12 px-4 rounded-lg border border-line-strong bg-surface text-left"
     >
         <span
             className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
-                checked ? 'bg-brand' : 'bg-white border border-line'
+                checked ? 'bg-brand' : 'bg-panel border border-line-strong'
             }`}
         >
-            {checked && <CheckIcon size={14} className="text-ink" />}
+            {checked && <CheckIcon size={14} className="text-on-brand" />}
         </span>
         <span className="text-sm text-ink">{label}</span>
     </button>
