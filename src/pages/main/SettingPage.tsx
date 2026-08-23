@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronRightIcon } from '../../components/icons'
 import Toggle from '../../components/ui/Toggle'
+import { useTheme } from '../../components/providers/ThemeProvider'
 import CustomAxios from '../../lib/axios/CustomAxios'
 import { queryClient } from '../../lib/query/queryClient'
 import token from '../../lib/token/token'
@@ -24,7 +25,6 @@ import {
 import { queryKeys } from '../../services/queryKeys'
 
 const subNav = ['계정', '알림', '개인정보 보호', '화면', '신고 내역', '고객센터']
-const THEME_STORAGE_KEY = 'starsnap-theme'
 
 const Row: React.FC<{
     label: string
@@ -50,7 +50,7 @@ const Row: React.FC<{
 const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
     <div className="mb-6">
         <h2 className="text-sm font-bold text-sub mb-2">{title}</h2>
-        <div className="bg-white border border-line rounded-2xl divide-y divide-line overflow-hidden">
+        <div className="bg-panel border border-line rounded-2xl divide-y divide-line overflow-hidden">
             {children}
         </div>
     </div>
@@ -70,7 +70,6 @@ const SettingPage: React.FC = () => {
     const [isInquirySubmitting, setIsInquirySubmitting] = useState(false)
     const [inquiryError, setInquiryError] = useState<string | null>(null)
     const [push, setPush] = useState(true)
-    const [dark, setDark] = useState(false)
     const [marketingPush, setMarketingPush] = useState(false)
     const [socialPush, setSocialPush] = useState(true)
     const [emailNotice, setEmailNotice] = useState(true)
@@ -80,6 +79,7 @@ const SettingPage: React.FC = () => {
     const [autoPlayVideo, setAutoPlayVideo] = useState(true)
     const [reduceMotion, setReduceMotion] = useState(false)
     const navigate = useNavigate()
+    const { isDark: dark, setTheme } = useTheme()
     const profileQuery = useQuery<UserProfileResponse>({
         queryKey: queryKeys.myProfile,
         queryFn: getMyProfile,
@@ -130,17 +130,9 @@ const SettingPage: React.FC = () => {
         return '접수됨'
     }
 
-    useEffect(() => {
-        const currentTheme = localStorage.getItem(THEME_STORAGE_KEY)
-        const isDark = currentTheme === 'dark'
-        setDark(isDark)
-    }, [])
-
-    useEffect(() => {
-        const nextTheme = dark ? 'dark' : 'light'
-        document.documentElement.classList.toggle('dark', dark)
-        localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
-    }, [dark])
+    const handleDarkModeChange = (nextDark: boolean) => {
+        setTheme(nextDark ? 'dark' : 'light')
+    }
 
     useEffect(() => {
         if (!selectedReport && !isInquiryModalOpen && !isBlockedUsersModalOpen) return
@@ -164,7 +156,7 @@ const SettingPage: React.FC = () => {
             console.warn('[auth] 서버 로그아웃 요청 실패', error)
         } finally {
             queryClient.clear()
-            token.clearToken()
+            token.clear()
             navigate('/login', { replace: true })
         }
     }
@@ -250,11 +242,11 @@ const SettingPage: React.FC = () => {
                         <Section title="환경설정">
                             <div className="h-14 px-5 flex items-center justify-between">
                                 <span className="text-body-sm text-ink">푸시 알림</span>
-                                <Toggle checked={push} onChange={setPush} />
+                                <Toggle ariaLabel="푸시 알림" checked={push} onChange={setPush} />
                             </div>
                             <div className="h-14 px-5 flex items-center justify-between">
                                 <span className="text-body-sm text-ink">다크 모드</span>
-                                <Toggle checked={dark} onChange={setDark} />
+                                <Toggle ariaLabel="다크 모드" checked={dark} onChange={handleDarkModeChange} />
                             </div>
                             <Row label="언어" value="한국어" />
                         </Section>
@@ -272,22 +264,22 @@ const SettingPage: React.FC = () => {
                         <Section title="푸시 알림">
                             <div className="h-14 px-5 flex items-center justify-between">
                                 <span className="text-body-sm text-ink">전체 알림</span>
-                                <Toggle checked={push} onChange={setPush} />
+                                <Toggle ariaLabel="전체 알림" checked={push} onChange={setPush} />
                             </div>
                             <div className="h-14 px-5 flex items-center justify-between">
                                 <span className="text-body-sm text-ink">좋아요/댓글 알림</span>
-                                <Toggle checked={socialPush} onChange={setSocialPush} />
+                                <Toggle ariaLabel="좋아요 및 댓글 알림" checked={socialPush} onChange={setSocialPush} />
                             </div>
                             <div className="h-14 px-5 flex items-center justify-between">
                                 <span className="text-body-sm text-ink">마케팅/이벤트 알림</span>
-                                <Toggle checked={marketingPush} onChange={setMarketingPush} />
+                                <Toggle ariaLabel="마케팅 및 이벤트 알림" checked={marketingPush} onChange={setMarketingPush} />
                             </div>
                         </Section>
 
                         <Section title="이메일 알림">
                             <div className="h-14 px-5 flex items-center justify-between">
                                 <span className="text-body-sm text-ink">중요 공지 메일</span>
-                                <Toggle checked={emailNotice} onChange={setEmailNotice} />
+                                <Toggle ariaLabel="중요 공지 메일" checked={emailNotice} onChange={setEmailNotice} />
                             </div>
                             <Row label="알림 시간 설정" value="09:00 - 22:00" />
                         </Section>
@@ -301,6 +293,7 @@ const SettingPage: React.FC = () => {
                             <div className="h-14 px-5 flex items-center justify-between">
                                 <span className="text-body-sm text-ink">비공개 계정</span>
                                 <Toggle
+                                    ariaLabel="비공개 계정"
                                     checked={profile?.isPrivate ?? false}
                                     onChange={handleTogglePrivateAccount}
                                     disabled={isPrivacySubmitting || !profile}
@@ -308,11 +301,11 @@ const SettingPage: React.FC = () => {
                             </div>
                             <div className="h-14 px-5 flex items-center justify-between">
                                 <span className="text-body-sm text-ink">검색 노출 허용</span>
-                                <Toggle checked={searchExposure} onChange={setSearchExposure} />
+                                <Toggle ariaLabel="검색 노출 허용" checked={searchExposure} onChange={setSearchExposure} />
                             </div>
                             <div className="h-14 px-5 flex items-center justify-between">
                                 <span className="text-body-sm text-ink">댓글 허용</span>
-                                <Toggle checked={commentAllow} onChange={setCommentAllow} />
+                                <Toggle ariaLabel="댓글 허용" checked={commentAllow} onChange={setCommentAllow} />
                             </div>
                         </Section>
 
@@ -334,11 +327,11 @@ const SettingPage: React.FC = () => {
                         <Section title="표시 옵션">
                             <div className="h-14 px-5 flex items-center justify-between">
                                 <span className="text-body-sm text-ink">다크 모드</span>
-                                <Toggle checked={dark} onChange={setDark} />
+                                <Toggle ariaLabel="다크 모드" checked={dark} onChange={handleDarkModeChange} />
                             </div>
                             <div className="h-14 px-5 flex items-center justify-between">
                                 <span className="text-body-sm text-ink">동작 줄이기</span>
-                                <Toggle checked={reduceMotion} onChange={setReduceMotion} />
+                                <Toggle ariaLabel="동작 줄이기" checked={reduceMotion} onChange={setReduceMotion} />
                             </div>
                             <Row label="글자 크기" value="보통" />
                         </Section>
@@ -346,7 +339,7 @@ const SettingPage: React.FC = () => {
                         <Section title="재생 설정">
                             <div className="h-14 px-5 flex items-center justify-between">
                                 <span className="text-body-sm text-ink">영상 자동 재생</span>
-                                <Toggle checked={autoPlayVideo} onChange={setAutoPlayVideo} />
+                                <Toggle ariaLabel="영상 자동 재생" checked={autoPlayVideo} onChange={setAutoPlayVideo} />
                             </div>
                             <Row label="이미지 품질" value="고화질" />
                         </Section>
@@ -450,23 +443,23 @@ const SettingPage: React.FC = () => {
             <div className="px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
                 <h1 className="text-2xl font-bold text-ink mb-6">설정</h1>
 
-                <div className="flex gap-6">
-                    <aside className="w-56 shrink-0">
-                        <div className="bg-white border border-line rounded-2xl p-2">
+                <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
+                    <aside className="w-full lg:w-56 lg:shrink-0">
+                        <div className="flex gap-2 overflow-x-auto pb-1 lg:block lg:overflow-visible lg:rounded-2xl lg:border lg:border-line lg:bg-panel lg:p-2">
                             {subNav.map((item) => {
                                 const isActive = item === active
                                 return (
                                     <button
                                         key={item}
                                         onClick={() => setActive(item)}
-                                        className={`relative w-full h-11 px-4 flex items-center rounded-xl text-body-sm transition-colors ${
+                                        className={`relative flex min-h-12 w-auto shrink-0 items-center justify-center rounded-xl border px-5 text-base transition-colors lg:min-h-11 lg:w-full lg:justify-start lg:border-transparent lg:px-4 lg:text-body-sm ${
                                             isActive
-                                                ? 'bg-surface text-ink font-bold'
-                                                : 'text-sub hover:bg-surface/70'
+                                                ? 'border-brand bg-brand-soft text-ink font-bold lg:bg-surface'
+                                                : 'border-line bg-panel text-sub hover:bg-surface/70'
                                         }`}
                                     >
                                         {isActive && (
-                                            <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-sm bg-brand" />
+                                            <span className="absolute bottom-1.5 left-0 top-1.5 hidden w-1 rounded-sm bg-brand lg:block" />
                                         )}
                                         {item}
                                     </button>
@@ -475,7 +468,7 @@ const SettingPage: React.FC = () => {
                         </div>
                     </aside>
 
-                    <div className="flex-1 max-w-[760px]">
+                    <div className="min-w-0 flex-1 max-w-[760px]">
                         {renderActivePanel()}
                     </div>
                 </div>
@@ -487,7 +480,7 @@ const SettingPage: React.FC = () => {
                     onClick={() => setSelectedReport(null)}
                 >
                     <div
-                        className="w-full max-w-xl rounded-2xl border border-line bg-white p-6 shadow-2xl"
+                        className="w-full max-w-xl rounded-2xl border border-line bg-panel p-6 shadow-2xl"
                         onClick={(event) => event.stopPropagation()}
                     >
                         <div className="flex items-start justify-between gap-3 mb-4">
@@ -545,7 +538,7 @@ const SettingPage: React.FC = () => {
                     onClick={() => setIsInquiryModalOpen(false)}
                 >
                     <div
-                        className="w-full max-w-xl rounded-2xl border border-line bg-white p-6 shadow-2xl"
+                        className="w-full max-w-xl rounded-2xl border border-line bg-panel p-6 shadow-2xl"
                         onClick={(event) => event.stopPropagation()}
                     >
                         <div className="flex items-start justify-between gap-3 mb-4">
@@ -570,7 +563,7 @@ const SettingPage: React.FC = () => {
                                     maxLength={120}
                                     value={inquiryTitle}
                                     onChange={(event) => setInquiryTitle(event.target.value)}
-                                    className="w-full rounded-xl border border-line px-4 py-2.5 text-ink outline-none focus:ring-2 focus:ring-brand/30"
+                                    className="w-full rounded-xl border border-line bg-panel px-4 py-2.5 text-ink outline-none focus:ring-2 focus:ring-brand/30"
                                     placeholder="문의 제목을 입력해 주세요"
                                 />
                             </div>
@@ -585,7 +578,7 @@ const SettingPage: React.FC = () => {
                                     rows={7}
                                     value={inquiryContent}
                                     onChange={(event) => setInquiryContent(event.target.value)}
-                                    className="w-full rounded-xl border border-line px-4 py-3 text-ink outline-none focus:ring-2 focus:ring-brand/30 resize-none"
+                                    className="w-full rounded-xl border border-line bg-panel px-4 py-3 text-ink outline-none focus:ring-2 focus:ring-brand/30 resize-none"
                                     placeholder="문의 내용을 입력해 주세요"
                                 />
                             </div>
@@ -602,7 +595,7 @@ const SettingPage: React.FC = () => {
                                 </button>
                                 <button
                                     type="button"
-                                    className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-ink disabled:opacity-60"
+                                    className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-on-brand disabled:opacity-60"
                                     onClick={handleSubmitInquiry}
                                     disabled={isInquirySubmitting}
                                 >
@@ -620,7 +613,7 @@ const SettingPage: React.FC = () => {
                     onClick={() => setIsBlockedUsersModalOpen(false)}
                 >
                     <div
-                        className="w-full max-w-xl rounded-2xl border border-line bg-white p-6 shadow-2xl"
+                        className="w-full max-w-xl rounded-2xl border border-line bg-panel p-6 shadow-2xl"
                         onClick={(event) => event.stopPropagation()}
                     >
                         <div className="flex items-start justify-between gap-3 mb-4">

@@ -19,6 +19,7 @@ import {
     deleteChatMessage,
     getChatHistory,
     getChatRooms,
+    isChatMessageRateLimitedFrame,
     isChatTypingFrame,
     isChatMessageDeletedFrame,
     isChatMessageUpdatedFrame,
@@ -45,6 +46,15 @@ type RoomContextMenu = {
 const MIN_ROOM_LIST_WIDTH = 240
 const MAX_ROOM_LIST_WIDTH = 520
 const MIN_CONVERSATION_WIDTH = 400
+const MESSAGE_RATE_WINDOW_MS = 10_000
+const MESSAGE_RATE_WINDOW_LIMIT = 5
+const MESSAGE_RATE_LIMIT_SECONDS = 30
+const DEFAULT_MESSAGE_RATE_LIMIT_MESSAGE = '메시지를 너무 빠르게 보내고 있어요.'
+
+type PendingSendDraft = {
+    roomId: string
+    content: string
+}
 
 const parseUtcDateTime = (iso: string) => {
     const value = iso.trim()
@@ -168,6 +178,10 @@ const MessagePage: React.FC = () => {
     const [messages, setMessages] = useState<ChatMessage[]>([])
     const [input, setInput] = useState('')
     const [chatError, setChatError] = useState<string | null>(null)
+    const [rateLimitDeadline, setRateLimitDeadline] = useState(0)
+    const [rateLimitRemainingSeconds, setRateLimitRemainingSeconds] = useState(0)
+    const [rateLimitMessage, setRateLimitMessage] = useState(DEFAULT_MESSAGE_RATE_LIMIT_MESSAGE)
+    const [rateLimitAnnouncement, setRateLimitAnnouncement] = useState('')
     const [typingUsers, setTypingUsers] = useState<Record<string, true>>({})
     const [contextMenu, setContextMenu] = useState<MessageContextMenu | null>(null)
     const [roomContextMenu, setRoomContextMenu] = useState<RoomContextMenu | null>(null)
@@ -188,6 +202,8 @@ const MessagePage: React.FC = () => {
     const [isRoomListResizing, setIsRoomListResizing] = useState(false)
     const wsRef = useRef<WebSocket | null>(null)
     const selectedRoomRef = useRef<ChatRoomSummary | null>(null)
+    const inputRef = useRef('')
+    const myUserIdRef = useRef<string | undefined>(undefined)
     const directRoomCreationRef = useRef<string | null>(null)
     const messageLayoutRef = useRef<HTMLDivElement | null>(null)
     const messageScrollRef = useRef<HTMLDivElement | null>(null)
@@ -197,6 +213,90 @@ const MessagePage: React.FC = () => {
     const localTypingRef = useRef<{ roomId: string } | null>(null)
     const typingStopTimerRef = useRef<number | null>(null)
     const remoteTypingTimersRef = useRef<Record<string, number>>({})
+    const rateLimitDeadlineRef = useRef(0)
+    const localSendTimestampsRef = useRef<number[]>([])
+    const pendingSendDraftsRef = useRef<PendingSendDraft[]>([])
+    const rejectedSendDraftsRef = useRef<Record<string, string[]>>({})
+
+    const selectRoom = (room: ChatRoomSummary | null) => {
+        selectedRoomRef.current = room
+        setSelectedRoom(room)
+    }
+
+    const queueRejectedSendDraft = (draft: PendingSendDraft) => {
+        const queuedDrafts = rejectedSendDraftsRef.current[draft.roomId] ?? []
+        rejectedSendDraftsRef.current[draft.roomId] = [...queuedDrafts, draft.content]
+    }
+
+    const restoreOrQueueRejectedSendDraft = (draft: PendingSendDraft) => {
+        const canRestoreNow = selectedRoomRef.current?.roomId === draft.roomId &&
+            !inputRef.current.trim()
+        if (canRestoreNow) {
+            inputRef.current = draft.content
+            setInput(draft.content)
+            return
+        }
+        queueRejectedSendDraft(draft)
+    }
+
+    const recoverPendingSendDrafts = () => {
+        const unresolvedDrafts = pendingSendDraftsRef.current
+        pendingSendDraftsRef.current = []
+        unresolvedDrafts.forEach(restoreOrQueueRejectedSendDraft)
+    }
+
+    const applyRateLimit = (retryAfterSeconds: number, message = DEFAULT_MESSAGE_RATE_LIMIT_MESSAGE) => {
+        const safeMessage = message.trim() || DEFAULT_MESSAGE_RATE_LIMIT_MESSAGE
+        const nextDeadline = Date.now() + Math.ceil(retryAfterSeconds * 1000)
+        const mergedDeadline = Math.max(rateLimitDeadlineRef.current, nextDeadline)
+        rateLimitDeadlineRef.current = mergedDeadline
+        setRateLimitDeadline(mergedDeadline)
+        setRateLimitRemainingSeconds(Math.max(1, Math.ceil((mergedDeadline - Date.now()) / 1000)))
+        setRateLimitMessage(safeMessage)
+        setRateLimitAnnouncement(`${safeMessage} 잠시 기다려주세요.`)
+    }
+
+    useEffect(() => {
+        if (rateLimitDeadline <= 0) return
+
+        const updateRemainingSeconds = () => {
+            const remainingSeconds = Math.max(
+                0,
+                Math.ceil((rateLimitDeadlineRef.current - Date.now()) / 1000),
+            )
+            setRateLimitRemainingSeconds(remainingSeconds)
+
+            if (remainingSeconds === 0) {
+                rateLimitDeadlineRef.current = 0
+                localSendTimestampsRef.current = []
+                setRateLimitDeadline(0)
+                setRateLimitMessage(DEFAULT_MESSAGE_RATE_LIMIT_MESSAGE)
+                setRateLimitAnnouncement('메시지를 다시 보낼 수 있어요.')
+            }
+        }
+
+        updateRemainingSeconds()
+        const timer = window.setInterval(updateRemainingSeconds, 1000)
+        return () => window.clearInterval(timer)
+    }, [rateLimitDeadline])
+
+    useEffect(() => {
+        const roomId = selectedRoom?.roomId
+        if (!roomId || inputRef.current.trim()) return
+
+        const queuedDrafts = rejectedSendDraftsRef.current[roomId]
+        const rejectedDraft = queuedDrafts?.[0]
+        if (!rejectedDraft) return
+        if (inputRef.current.trim()) return
+
+        if (queuedDrafts.length === 1) {
+            delete rejectedSendDraftsRef.current[roomId]
+        } else {
+            rejectedSendDraftsRef.current[roomId] = queuedDrafts.slice(1)
+        }
+        inputRef.current = rejectedDraft
+        setInput(rejectedDraft)
+    }, [input, selectedRoom?.roomId])
 
     const stopTyping = () => {
         if (typingStopTimerRef.current !== null) {
@@ -268,6 +368,7 @@ const MessagePage: React.FC = () => {
 
     const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const nextInput = event.target.value
+        inputRef.current = nextInput
         setInput(nextInput)
 
         if (!selectedRoom || !nextInput.trim()) {
@@ -296,11 +397,20 @@ const MessagePage: React.FC = () => {
         queryFn: getMyProfile,
     })
 
+    useEffect(() => {
+        myUserIdRef.current = myProfileQuery.data?.userId
+    }, [myProfileQuery.data?.userId])
+
     const roomsQuery = useQuery<ChatRoomSummary[]>({
         queryKey: ['message-rooms'],
         queryFn: getChatRooms,
         refetchInterval: 10_000,
     })
+    const roomsRefetchRef = useRef(roomsQuery.refetch)
+
+    useEffect(() => {
+        roomsRefetchRef.current = roomsQuery.refetch
+    }, [roomsQuery.refetch])
 
     const roomPreviews = useMemo(() => {
         const rooms = roomsQuery.data ?? []
@@ -386,17 +496,13 @@ const MessagePage: React.FC = () => {
     }, [rooms, keyword, myProfileQuery.data?.userId])
 
     useEffect(() => {
-        selectedRoomRef.current = selectedRoom
-    }, [selectedRoom])
-
-    useEffect(() => {
         const myUserId = myProfileQuery.data?.userId
         const targetUserId = targetUserQuery.data?.userId
         if (!myUserId || !targetUserId || targetUserId === myUserId) return
 
         const existingRoom = rooms.find((room) => isDirectRoomWithUser(room, myUserId, targetUserId))
         if (existingRoom) {
-            if (selectedRoom?.roomId !== existingRoom.roomId) setSelectedRoom(existingRoom)
+            if (selectedRoom?.roomId !== existingRoom.roomId) selectRoom(existingRoom)
             return
         }
         if (directRoomCreationRef.current === targetUserId) return
@@ -404,7 +510,7 @@ const MessagePage: React.FC = () => {
         directRoomCreationRef.current = targetUserId
         void createChatRoom({ memberUserIds: [targetUserId] })
             .then(async (room) => {
-                setSelectedRoom(room)
+                selectRoom(room)
                 await roomsQuery.refetch()
             })
             .catch((error) => {
@@ -425,13 +531,13 @@ const MessagePage: React.FC = () => {
         // otherwise a freshly created/selected room gets clobbered by a stale list on the next render.
         // Explicit removal (e.g. leaving a room) clears selectedRoom itself, so this doesn't need to.
         if (selectedRoom === null) {
-            setSelectedRoom(rooms[0] ?? null)
+            selectRoom(rooms[0] ?? null)
             return
         }
 
         const refreshedSelectedRoom = rooms.find((room) => room.roomId === selectedRoom.roomId)
         if (refreshedSelectedRoom && refreshedSelectedRoom !== selectedRoom) {
-            setSelectedRoom(refreshedSelectedRoom)
+            selectRoom(refreshedSelectedRoom)
         }
     }, [rooms, selectedRoom])
 
@@ -459,12 +565,35 @@ const MessagePage: React.FC = () => {
 
             nextSocket.onopen = () => {
                 reconnectAttempt = 0
-                void roomsQuery.refetch()
+                void roomsRefetchRef.current()
             }
 
             nextSocket.onmessage = (event) => {
                 try {
                     const frame: unknown = JSON.parse(event.data)
+                    if (isChatMessageRateLimitedFrame(frame)) {
+                        setChatError(null)
+                        applyRateLimit(frame.retryAfterSeconds, frame.message)
+
+                        const pendingIndex = pendingSendDraftsRef.current.findIndex((draft) => (
+                            draft.roomId === frame.roomId && draft.content === frame.content
+                        ))
+                        const pendingDraft = pendingIndex >= 0
+                            ? pendingSendDraftsRef.current[pendingIndex]
+                            : undefined
+                        if (pendingIndex >= 0) {
+                            pendingSendDraftsRef.current = pendingSendDraftsRef.current.filter((_, index) => (
+                                index !== pendingIndex
+                            ))
+                        }
+                        const rejectedDraft = pendingDraft ?? {
+                            roomId: frame.roomId,
+                            content: frame.content,
+                        }
+                        restoreOrQueueRejectedSendDraft(rejectedDraft)
+                        return
+                    }
+
                     if (isChatTypingFrame(frame)) {
                         if (selectedRoomRef.current?.roomId === frame.roomId) {
                             updatePartnerTyping(frame.senderUserId, frame.isTyping)
@@ -474,18 +603,18 @@ const MessagePage: React.FC = () => {
 
                     if (isChatMessageUpdatedFrame(frame)) {
                         if (selectedRoomRef.current?.roomId !== frame.message.roomId) {
-                            void roomsQuery.refetch()
+                            void roomsRefetchRef.current()
                             return
                         }
                         const updated = frame.message
                         setMessages((prev) => prev.map((item) => item.id === updated.id ? updated : item))
-                        void roomsQuery.refetch()
+                        void roomsRefetchRef.current()
                         return
                     }
 
                     if (isChatMessageDeletedFrame(frame)) {
                         if (selectedRoomRef.current?.roomId !== frame.roomId) {
-                            void roomsQuery.refetch()
+                            void roomsRefetchRef.current()
                             return
                         }
                         setMessages((prev) => prev.map((item) => (
@@ -493,15 +622,25 @@ const MessagePage: React.FC = () => {
                                 ? { ...item, status: frame.status, content: '' }
                                 : item
                         )))
-                        void roomsQuery.refetch()
+                        void roomsRefetchRef.current()
                         return
                     }
 
                     const message = frame as ChatMessage
                     if (!message.roomId) return
+                    if (message.senderUserId === myUserIdRef.current) {
+                        const pendingIndex = pendingSendDraftsRef.current.findIndex((draft) => (
+                            draft.roomId === message.roomId && draft.content === message.content
+                        ))
+                        if (pendingIndex >= 0) {
+                            pendingSendDraftsRef.current = pendingSendDraftsRef.current.filter((_, index) => (
+                                index !== pendingIndex
+                            ))
+                        }
+                    }
                     updatePartnerTyping(message.senderUserId, false)
                     if (selectedRoomRef.current?.roomId !== message.roomId) {
-                        void roomsQuery.refetch()
+                        void roomsRefetchRef.current()
                         return
                     }
                     setMessages((prev) => {
@@ -509,7 +648,7 @@ const MessagePage: React.FC = () => {
                         if (exists) return prev
                         return [...prev, message]
                     })
-                    void roomsQuery.refetch()
+                    void roomsRefetchRef.current()
                 } catch {
                     // ignore malformed event
                 }
@@ -517,6 +656,10 @@ const MessagePage: React.FC = () => {
 
             nextSocket.onclose = () => {
                 if (wsRef.current === nextSocket) wsRef.current = null
+                if (!closed && pendingSendDraftsRef.current.length > 0) {
+                    recoverPendingSendDrafts()
+                    setChatError('연결이 끊겨 전송을 확인하지 못한 메시지를 입력창에 복구했어요.')
+                }
                 scheduleReconnect()
             }
 
@@ -533,7 +676,7 @@ const MessagePage: React.FC = () => {
             Object.values(remoteTypingTimersRef.current).forEach((timer) => window.clearTimeout(timer))
             remoteTypingTimersRef.current = {}
         }
-    }, [myProfileQuery.data?.userId, roomsQuery.refetch])
+    }, [])
 
     useEffect(() => {
         return () => stopTyping()
@@ -636,9 +779,19 @@ const MessagePage: React.FC = () => {
     const handleSend = () => {
         const text = input.trim()
         if (!selectedRoom || !text) return
+        if (!myProfileQuery.data?.userId) {
+            setChatError('사용자 정보를 불러오는 중이에요. 잠시 후 다시 보내주세요.')
+            return
+        }
 
         stopTyping()
         setChatError(null)
+
+        const now = Date.now()
+        if (rateLimitDeadlineRef.current > now) {
+            setRateLimitRemainingSeconds(Math.ceil((rateLimitDeadlineRef.current - now) / 1000))
+            return
+        }
 
         const ws = wsRef.current
         if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -646,10 +799,28 @@ const MessagePage: React.FC = () => {
             return
         }
 
+        const recentSendTimestamps = localSendTimestampsRef.current.filter((timestamp) => (
+            now - timestamp < MESSAGE_RATE_WINDOW_MS
+        ))
+        localSendTimestampsRef.current = recentSendTimestamps
+        if (recentSendTimestamps.length >= MESSAGE_RATE_WINDOW_LIMIT) {
+            applyRateLimit(MESSAGE_RATE_LIMIT_SECONDS)
+            return
+        }
+
+        const pendingDraft: PendingSendDraft = {
+            roomId: selectedRoom.roomId,
+            content: text,
+        }
+        pendingSendDraftsRef.current = [...pendingSendDraftsRef.current, pendingDraft]
+
         try {
             ws.send(JSON.stringify({ roomId: selectedRoom.roomId, content: text }))
+            localSendTimestampsRef.current = [...recentSendTimestamps, now]
+            inputRef.current = ''
             setInput('')
         } catch (e) {
+            pendingSendDraftsRef.current = pendingSendDraftsRef.current.filter((draft) => draft !== pendingDraft)
             console.error('[chat] 전송 실패', e)
             setChatError('메시지 전송에 실패했어요. 잠시 후 다시 시도해주세요.')
         }
@@ -675,7 +846,7 @@ const MessagePage: React.FC = () => {
                 title: newRoomTitle.trim() || undefined,
                 memberUserIds,
             })
-            setSelectedRoom(room)
+            selectRoom(room)
             setNewRoomTitle('')
             setNewRoomMemberNames('')
             setIsCreateRoomOpen(false)
@@ -709,7 +880,7 @@ const MessagePage: React.FC = () => {
             }
 
             const updatedRoom = await addChatRoomMembers(selectedRoom.roomId, memberUserIds)
-            setSelectedRoom(updatedRoom)
+            selectRoom(updatedRoom)
             setAddMemberNames('')
             setIsAddMemberOpen(false)
             await roomsQuery.refetch()
@@ -733,7 +904,7 @@ const MessagePage: React.FC = () => {
         try {
             await leaveChatRoom(room.roomId)
             setLeaveRoomTarget(null)
-            if (selectedRoom?.roomId === room.roomId) setSelectedRoom(null)
+            if (selectedRoom?.roomId === room.roomId) selectRoom(null)
             await roomsQuery.refetch()
         } catch (error) {
             console.error('[chat] 채팅방 나가기 실패', error)
@@ -825,7 +996,7 @@ const MessagePage: React.FC = () => {
             className={`flex h-[calc(100dvh-64px-80px-env(safe-area-inset-bottom))] w-full min-w-0 lg:h-[calc(100vh-64px)] ${isRoomListResizing ? 'select-none cursor-col-resize' : ''}`}
         >
             <div
-                className={`${selectedRoom ? 'hidden md:flex' : 'flex'} w-full shrink-0 flex-col border-r border-line bg-white md:w-[var(--room-list-width)]`}
+                className={`${selectedRoom ? 'hidden md:flex' : 'flex'} w-full shrink-0 flex-col border-r border-line bg-panel md:w-[var(--room-list-width)]`}
                 style={{ '--room-list-width': `${roomListWidth}px` } as React.CSSProperties}
             >
                 <div className="px-5 pt-5 pb-3 flex items-center justify-between">
@@ -864,7 +1035,7 @@ const MessagePage: React.FC = () => {
                                 className={`w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-surface transition-colors ${
                                     active ? 'bg-surface' : ''
                                 }`}
-                                onClick={() => setSelectedRoom(room)}
+                                onClick={() => selectRoom(room)}
                                 onContextMenu={(event) => {
                                     event.preventDefault()
                                     setRoomContextMenu({
@@ -907,13 +1078,13 @@ const MessagePage: React.FC = () => {
                 <span className="h-10 w-1 rounded-full bg-transparent transition-colors group-hover:bg-brand/70" />
             </div>
 
-            <div className={`${selectedRoom ? 'flex' : 'hidden md:flex'} flex-1 min-w-0 flex-col bg-white`}>
+            <div className={`${selectedRoom ? 'flex' : 'hidden md:flex'} flex-1 min-w-0 flex-col bg-panel`}>
                 <div className="h-16 px-3 sm:px-6 flex items-center justify-between border-b border-line">
                     <div className="flex items-center gap-3">
                         <button
                             type="button"
                             className="flex h-11 w-11 items-center justify-center rounded-xl text-sub hover:bg-surface md:hidden"
-                            onClick={() => setSelectedRoom(null)}
+                            onClick={() => selectRoom(null)}
                             aria-label="대화 목록으로 돌아가기"
                         >
                             <ChevronLeftIcon size={22} />
@@ -925,8 +1096,8 @@ const MessagePage: React.FC = () => {
                         />
                         <div>
                             <div className="text-sm font-bold text-ink">{selectedRoom ? getRoomDisplayName(selectedRoom, myUserId) : '대화 상대를 선택하세요'}</div>
-                            <div className={`text-xs flex items-center gap-1 ${partnerIsTyping ? 'text-sub' : 'text-emerald-500'}`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${partnerIsTyping ? 'bg-sub animate-pulse' : 'bg-emerald-500'}`} />
+                            <div className={`text-xs flex items-center gap-1 ${partnerIsTyping ? 'text-sub' : 'text-success'}`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${partnerIsTyping ? 'bg-sub animate-pulse' : 'bg-success'}`} />
                                 {partnerIsTyping ? `${typingMemberNames.join(', ')} 입력 중` : `${selectedRoom?.members.length ?? 0}명 참여 중`}
                             </div>
                         </div>
@@ -944,7 +1115,7 @@ const MessagePage: React.FC = () => {
                             </button>
                             <button
                                 type="button"
-                                className="flex h-11 w-11 items-center justify-center rounded-xl text-muted hover:bg-surface hover:text-red-600"
+                                className="flex h-11 w-11 items-center justify-center rounded-xl text-muted hover:bg-surface hover:text-danger"
                                 aria-label="채팅방 나가기"
                                 title="채팅방 나가기"
                                 onClick={() => setLeaveRoomTarget(selectedRoom)}
@@ -962,7 +1133,7 @@ const MessagePage: React.FC = () => {
                                 <p className="text-sm text-sub">아직 대화가 없어요.</p>
                                 <button
                                     type="button"
-                                    className="min-h-11 rounded-xl bg-brand px-4 text-sm font-bold text-ink hover:brightness-95"
+                                    className="min-h-11 rounded-xl bg-brand px-4 text-sm font-bold text-on-brand hover:brightness-95"
                                     onClick={() => setIsCreateRoomOpen(true)}
                                 >
                                     새 대화 시작하기
@@ -999,7 +1170,7 @@ const MessagePage: React.FC = () => {
                                     <div
                                         className={`px-4 py-2.5 text-sm leading-relaxed ${
                                             mine
-                                                ? 'bg-brand text-ink rounded-2xl rounded-tr-sm'
+                                                ? 'bg-brand text-on-brand rounded-2xl rounded-tr-sm'
                                                 : 'bg-surface text-ink rounded-2xl rounded-tl-sm'
                                         }`}
                                         onContextMenu={(event) => {
@@ -1041,10 +1212,21 @@ const MessagePage: React.FC = () => {
                 )}
 
                 {chatError && (
-                    <div className="px-6 py-2 text-xs text-red-600 bg-red-50 border-t border-red-100">
+                    <div className="border-t border-line bg-panel-subtle px-6 py-2 text-xs text-danger" role="alert">
                         {chatError}
                     </div>
                 )}
+                {rateLimitRemainingSeconds > 0 && (
+                    <div
+                        id="message-rate-limit-status"
+                        className="border-t border-line bg-panel-subtle px-6 py-2 text-xs text-danger"
+                    >
+                        {rateLimitMessage} {rateLimitRemainingSeconds}초 후 다시 보낼 수 있어요.
+                    </div>
+                )}
+                <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+                    {rateLimitAnnouncement}
+                </div>
                 <div className="p-4 border-t border-line">
                     <div className="relative">
                         <label htmlFor="message-input" className="sr-only">메시지 입력</label>
@@ -1057,6 +1239,7 @@ const MessagePage: React.FC = () => {
                             onCompositionStart={handleInputCompositionStart}
                             onCompositionUpdate={handleInputCompositionUpdate}
                             onBlur={stopTyping}
+                            aria-describedby={rateLimitRemainingSeconds > 0 ? 'message-rate-limit-status' : undefined}
                             onKeyDown={(e) => {
                                 if (e.nativeEvent.isComposing) return
                                 if (e.key === 'Enter') {
@@ -1066,10 +1249,12 @@ const MessagePage: React.FC = () => {
                             }}
                         />
                         <button
-                            className="absolute right-0.5 top-0.5 h-11 w-11 rounded-full bg-brand text-ink flex items-center justify-center hover:brightness-95"
+                            className="absolute right-0.5 top-0.5 h-11 w-11 rounded-full bg-brand text-on-brand flex items-center justify-center hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
                             onClick={() => void handleSend()}
-                            disabled={!selectedRoom || !input.trim()}
-                            aria-label="메시지 보내기"
+                            disabled={!selectedRoom || !input.trim() || rateLimitRemainingSeconds > 0}
+                            aria-label={rateLimitRemainingSeconds > 0
+                                ? `메시지 보내기 (${rateLimitRemainingSeconds}초 후 가능)`
+                                : '메시지 보내기'}
                         >
                             <SendIcon size={18} />
                         </button>
@@ -1079,17 +1264,17 @@ const MessagePage: React.FC = () => {
 
             {isCreateRoomOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="presentation">
-                    <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="create-room-title">
+                    <div className="w-full max-w-md rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="create-room-title">
                         <h2 id="create-room-title" className="text-base font-bold text-ink">새 대화</h2>
                         <input
-                            className="mt-4 h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none focus:border-brand"
+                            className="mt-4 h-10 w-full rounded-md border border-line bg-panel px-3 text-sm text-ink outline-none focus:border-brand"
                             placeholder="대화방 이름 (선택)"
                             value={newRoomTitle}
                             onChange={(event) => setNewRoomTitle(event.target.value)}
                         />
                         <input
                             autoFocus
-                            className="mt-3 h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none focus:border-brand"
+                            className="mt-3 h-10 w-full rounded-md border border-line bg-panel px-3 text-sm text-ink outline-none focus:border-brand"
                             placeholder="초대할 사용자명, 사용자명"
                             value={newRoomMemberNames}
                             onChange={(event) => setNewRoomMemberNames(event.target.value)}
@@ -1099,7 +1284,7 @@ const MessagePage: React.FC = () => {
                             }}
                         />
                         {inviteSuggestions.length > 0 && (
-                            <div className="mt-2 max-h-44 overflow-y-auto rounded-md border border-line bg-white">
+                            <div className="mt-2 max-h-44 overflow-y-auto rounded-md border border-line bg-panel">
                                 {inviteSuggestions.map((item) => (
                                     <button
                                         key={item.id}
@@ -1130,7 +1315,7 @@ const MessagePage: React.FC = () => {
                             </button>
                             <button
                                 type="button"
-                                className="h-9 rounded-md bg-brand px-3 text-sm font-medium text-ink disabled:opacity-50"
+                                className="h-9 rounded-md bg-brand px-3 text-sm font-medium text-on-brand disabled:opacity-50"
                                 onClick={() => void handleCreateRoom()}
                                 disabled={isCreatingRoom || !newRoomMemberNames.trim()}
                             >
@@ -1143,11 +1328,11 @@ const MessagePage: React.FC = () => {
 
             {isAddMemberOpen && selectedRoom && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="presentation">
-                    <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="add-member-title">
+                    <div className="w-full max-w-md rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="add-member-title">
                         <h2 id="add-member-title" className="text-base font-bold text-ink">멤버 추가</h2>
                         <input
                             autoFocus
-                            className="mt-4 h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-ink outline-none focus:border-brand"
+                            className="mt-4 h-10 w-full rounded-md border border-line bg-panel px-3 text-sm text-ink outline-none focus:border-brand"
                             placeholder="추가할 사용자명, 사용자명"
                             value={addMemberNames}
                             onChange={(event) => setAddMemberNames(event.target.value)}
@@ -1157,7 +1342,7 @@ const MessagePage: React.FC = () => {
                             }}
                         />
                         {addMemberSuggestions.length > 0 && (
-                            <div className="mt-2 max-h-44 overflow-y-auto rounded-md border border-line bg-white">
+                            <div className="mt-2 max-h-44 overflow-y-auto rounded-md border border-line bg-panel">
                                 {addMemberSuggestions.map((item) => (
                                     <button
                                         key={item.id}
@@ -1188,7 +1373,7 @@ const MessagePage: React.FC = () => {
                             </button>
                             <button
                                 type="button"
-                                className="h-9 rounded-md bg-brand px-3 text-sm font-medium text-ink disabled:opacity-50"
+                                className="h-9 rounded-md bg-brand px-3 text-sm font-medium text-on-brand disabled:opacity-50"
                                 onClick={() => void handleAddMembers()}
                                 disabled={isAddingMember || !addMemberNames.trim()}
                             >
@@ -1201,7 +1386,7 @@ const MessagePage: React.FC = () => {
 
             {leaveRoomTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="presentation">
-                    <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="leave-room-title">
+                    <div className="w-full max-w-sm rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="leave-room-title">
                         <h2 id="leave-room-title" className="text-base font-bold text-ink">채팅방 나가기</h2>
                         <p className="mt-2 text-sm text-sub">
                             {getRoomDisplayName(leaveRoomTarget, myProfileQuery.data?.userId)} 대화방에서 나갈까요? 대화 목록에서 사라져요.
@@ -1217,7 +1402,7 @@ const MessagePage: React.FC = () => {
                             </button>
                             <button
                                 type="button"
-                                className="h-9 rounded-md bg-red-600 px-3 text-sm font-medium text-white disabled:opacity-50"
+                                className="h-9 rounded-md bg-danger px-3 text-sm font-medium text-on-danger disabled:opacity-50"
                                 onClick={() => void handleLeaveRoom()}
                                 disabled={isLeavingRoom}
                             >
@@ -1231,7 +1416,7 @@ const MessagePage: React.FC = () => {
             {contextMenu && (
                 <div
                     role="menu"
-                    className="fixed z-50 w-40 rounded-lg border border-line bg-white p-1 shadow-lg"
+                    className="fixed z-50 w-40 rounded-lg border border-line bg-panel p-1 shadow-lg"
                     style={{ left: contextMenu.x, top: contextMenu.y }}
                     onPointerDown={(event) => event.stopPropagation()}
                 >
@@ -1251,7 +1436,7 @@ const MessagePage: React.FC = () => {
                     <button
                         type="button"
                         role="menuitem"
-                        className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm text-red-600 hover:bg-red-50"
+                        className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm text-danger hover:bg-panel-subtle"
                         onClick={() => {
                             setDeleteTarget(contextMenu.message)
                             setContextMenu(null)
@@ -1266,14 +1451,14 @@ const MessagePage: React.FC = () => {
             {roomContextMenu && (
                 <div
                     role="menu"
-                    className="fixed z-50 w-40 rounded-lg border border-line bg-white p-1 shadow-lg"
+                    className="fixed z-50 w-40 rounded-lg border border-line bg-panel p-1 shadow-lg"
                     style={{ left: roomContextMenu.x, top: roomContextMenu.y }}
                     onPointerDown={(event) => event.stopPropagation()}
                 >
                     <button
                         type="button"
                         role="menuitem"
-                        className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm text-red-600 hover:bg-red-50"
+                        className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm text-danger hover:bg-panel-subtle"
                         onClick={() => {
                             setLeaveRoomTarget(roomContextMenu.room)
                             setRoomContextMenu(null)
@@ -1287,11 +1472,11 @@ const MessagePage: React.FC = () => {
 
             {editingMessage && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="presentation">
-                    <div className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="edit-message-title">
+                    <div className="w-full max-w-md rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="edit-message-title">
                         <h2 id="edit-message-title" className="text-base font-bold text-ink">메시지 수정</h2>
                         <textarea
                             autoFocus
-                            className="mt-4 min-h-28 w-full resize-y rounded-lg border border-line bg-white p-3 text-sm text-ink outline-none focus:border-brand"
+                            className="mt-4 min-h-28 w-full resize-y rounded-lg border border-line bg-panel p-3 text-sm text-ink outline-none focus:border-brand"
                             value={editText}
                             onChange={(event) => setEditText(event.target.value)}
                             onKeyDown={(event) => {
@@ -1309,7 +1494,7 @@ const MessagePage: React.FC = () => {
                             </button>
                             <button
                                 type="button"
-                                className="h-9 rounded-md bg-brand px-3 text-sm font-medium text-ink disabled:opacity-50"
+                                className="h-9 rounded-md bg-brand px-3 text-sm font-medium text-on-brand disabled:opacity-50"
                                 onClick={() => void handleEditMessage()}
                                 disabled={messageActionLoading || !editText.trim()}
                             >
@@ -1322,7 +1507,7 @@ const MessagePage: React.FC = () => {
 
             {deleteTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="presentation">
-                    <div className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="delete-message-title">
+                    <div className="w-full max-w-sm rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="delete-message-title">
                         <h2 id="delete-message-title" className="text-base font-bold text-ink">메시지 삭제</h2>
                         <p className="mt-2 text-sm text-sub">삭제한 메시지는 복구할 수 없어요.</p>
                         <div className="mt-5 flex justify-end gap-2">
@@ -1336,7 +1521,7 @@ const MessagePage: React.FC = () => {
                             </button>
                             <button
                                 type="button"
-                                className="h-9 rounded-md bg-red-600 px-3 text-sm font-medium text-white disabled:opacity-50"
+                                className="h-9 rounded-md bg-danger px-3 text-sm font-medium text-on-danger disabled:opacity-50"
                                 onClick={() => void handleDeleteMessage()}
                                 disabled={messageActionLoading}
                             >
