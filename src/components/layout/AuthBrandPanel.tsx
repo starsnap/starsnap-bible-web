@@ -1,5 +1,4 @@
 import React from 'react'
-import { StarIcon } from '../icons'
 
 type Props = {
     /** index of the active carousel dot (0-2) */
@@ -10,7 +9,14 @@ const AuthBrandPanel: React.FC<Props> = ({ active = 0 }) => {
     return (
         <div className="relative hidden lg:flex flex-col w-[42%] max-w-[640px] bg-media-backdrop text-on-media p-12 overflow-hidden">
             <div className="flex items-center gap-2">
-                <StarIcon size={28} className="text-brand" fill="currentColor" stroke="none" />
+                <img
+                    src="/icon-96.png"
+                    alt=""
+                    aria-hidden="true"
+                    width={96}
+                    height={96}
+                    className="h-8 w-8 shrink-0 rounded-lg object-cover"
+                />
                 <span className="text-2xl font-semibold tracking-tight">StarSnap</span>
             </div>
 

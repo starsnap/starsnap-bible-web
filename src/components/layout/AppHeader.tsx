@@ -1,7 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { StarIcon, SearchIcon, PlusIcon, BellIcon } from '../icons'
+import { SearchIcon, PlusIcon, BellIcon } from '../icons'
 import { getMyProfile, type UserProfileResponse } from '../../services/snapService'
 import { queryKeys } from '../../services/queryKeys'
 import { applyNextImageCandidate, getImageCandidates } from '../../utils/s3Image'
@@ -29,7 +29,14 @@ const AppHeader: React.FC = () => {
                     className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-1.5 shrink-0 hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                     aria-label="StarSnap home"
                 >
-                    <StarIcon size={24} className="text-brand" fill="currentColor" stroke="none" />
+                    <img
+                        src="/icon-96.png"
+                        alt=""
+                        aria-hidden="true"
+                        width={96}
+                        height={96}
+                        className="h-8 w-8 shrink-0 rounded-lg object-cover"
+                    />
                     <span className="hidden text-xl font-semibold tracking-tight lg:inline">StarSnap</span>
                 </button>
 

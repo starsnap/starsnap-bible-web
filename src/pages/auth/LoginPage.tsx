@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import CustomAxios from '../../lib/axios/CustomAxios';
 import { queryClient } from '../../lib/query/queryClient';
 import token from '../../lib/token/token';
-import { StarIcon } from '../../components/icons';
 
 const LoginPage: React.FC = () => {
     const [identifier, setIdentifier] = useState('');
@@ -65,9 +64,14 @@ const LoginPage: React.FC = () => {
             <div className="w-full max-w-[400px] bg-panel rounded-[24px] border border-line shadow-[var(--ss-shadow-md)] px-6 py-8 sm:px-9 sm:py-10">
                 <div className="text-center">
                     <h1 className="flex items-center justify-center gap-2.5 text-2xl font-extrabold tracking-tight text-ink">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-soft" aria-hidden>
-                            <StarIcon size={24} className="text-ink" fill="currentColor" stroke="none" />
-                        </span>
+                        <img
+                            src="/icon-96.png"
+                            alt=""
+                            aria-hidden="true"
+                            width={96}
+                            height={96}
+                            className="h-10 w-10 shrink-0 rounded-xl object-cover"
+                        />
                         StarSnap
                     </h1>
                     <p className="mt-2 text-sm text-sub">좋아하는 스타의 순간을 한곳에 모아보세요</p>
