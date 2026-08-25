@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Lottie from 'lottie-react';
 import { useEmailCheck } from '../../hooks/useEmailCheck';
@@ -48,10 +48,14 @@ const SignupPage: React.FC = () => {
     const [resultState, setResultState] = useState<SignupResultState>('FORM');
     const [successNextUrl, setSuccessNextUrl] = useState<string | null>(null);
     const [emailSending, setEmailSending] = useState(false);
+    const [emailSendError, setEmailSendError] = useState<string | null>(null);
+    const [emailSendRejected, setEmailSendRejected] = useState(false);
     const [emailVerifying, setEmailVerifying] = useState(false);
     const [verifyCodeState, setVerifyCodeState] = useState<VerifyCodeState>('DEFAULT');
     const [verifyTimer, setVerifyTimer] = useState(0);
     const [resendTimer, setResendTimer] = useState(0);
+    const emailRef = useRef(email);
+    emailRef.current = email;
 
     const usernameValid = USERNAME_REGEX.test(username);
     const usernameCheck = useUsernameCheck(step === 0 && usernameValid ? username : undefined, { debounceMs: 700 });
@@ -71,7 +75,8 @@ const SignupPage: React.FC = () => {
 
     const isVerificationSent = verifyTimer > 0 || resendTimer > 0 || verifyCodeState === 'SUCCESS';
     const isEmailVerified = verifyCodeState === 'SUCCESS' && signupToken.length > 0;
-    const canSendVerification = emailValid && emailCheck.available === true && resendTimer === 0 && !emailSending && !isEmailVerified;
+    const emailAvailable = emailValid && emailCheck.available === true && !emailSendRejected;
+    const canSendVerification = emailAvailable && resendTimer === 0 && !emailSending && !isEmailVerified;
     const canVerifyCode = verifyCode.length === VERIFY_CODE_LENGTH && verifyTimer > 0 && !emailVerifying && !isEmailVerified;
 
     const canProceed = (() => {
@@ -81,7 +86,7 @@ const SignupPage: React.FC = () => {
             case 1:
                 return passwordState === 'SUCCESS';
             case 2:
-                return emailValid && emailCheck.available === true;
+                return emailAvailable;
             case 3:
                 return isEmailVerified;
             case 4:
@@ -122,6 +127,8 @@ const SignupPage: React.FC = () => {
         setVerifyCodeState('DEFAULT');
         setVerifyTimer(0);
         setResendTimer(0);
+        setEmailSendError(null);
+        setEmailSendRejected(false);
         setGlobalError(null);
     }, [email]);
 
@@ -129,22 +136,39 @@ const SignupPage: React.FC = () => {
         if (!canSendVerification) return;
 
         setGlobalError(null);
+        setEmailSendError(null);
+        setEmailSendRejected(false);
         setEmailSending(true);
         setVerifyCode('');
         setSignupToken('');
         setVerifyCodeState('LOADING');
 
+        const requestedEmail = email;
         try {
-            await sendEmailVerification(email);
+            await sendEmailVerification(requestedEmail);
+            if (emailRef.current !== requestedEmail) return;
+
             setVerifyTimer(VERIFY_EXPIRE_SECONDS);
             setResendTimer(VERIFY_RESEND_SECONDS);
             setVerifyCodeState('DEFAULT');
             setStep(3);
         } catch (err: any) {
+            if (emailRef.current !== requestedEmail) return;
+
             const status = err?.response?.status;
-            if (status === 400 || status === 409) {
+            if (status === 409) {
+                setEmailSendError('이미 사용중인 이메일입니다');
+                setEmailSendRejected(true);
                 setVerifyCodeState('ERROR');
+            } else if (status === 400) {
+                setEmailSendError('유효한 이메일을 입력하세요');
+                setEmailSendRejected(true);
+                setVerifyCodeState('ERROR');
+            } else if (status === 429) {
+                setEmailSendError('인증번호 전송 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');
+                setVerifyCodeState('INTERNET_ERROR');
             } else {
+                setEmailSendError('인증번호를 전송하지 못했습니다. 잠시 후 다시 시도해주세요.');
                 setVerifyCodeState('INTERNET_ERROR');
             }
         } finally {
@@ -408,19 +432,23 @@ const SignupPage: React.FC = () => {
                         {step === 2 && (
                             <div className="flex flex-col gap-4">
                                 <Field
+                                    type="email"
+                                    autoComplete="email"
                                     value={email}
                                     onChange={setEmail}
                                     placeholder="you@example.com"
-                                    valid={emailValid && emailCheck.available === true}
-                                    okText={emailCheck.available === true ? '사용 가능한 이메일입니다' : undefined}
+                                    disabled={emailSending}
+                                    valid={emailAvailable}
+                                    okText={emailAvailable ? '사용 가능한 이메일입니다' : undefined}
                                     infoText={emailValid && emailCheck.loading ? '이메일 확인 중...' : undefined}
                                     errorText={
                                         email.length > 0 && !emailValid
                                             ? '유효한 이메일을 입력하세요'
                                             : emailCheck.available === false
                                             ? '이미 사용중인 이메일입니다'
-                                            : undefined
+                                            : emailSendError ?? emailCheck.error ?? undefined
                                     }
+                                    onEnter={handleSendVerification}
                                 />
 
                             </div>
@@ -543,6 +571,7 @@ type FieldProps = {
     placeholder?: string;
     type?: string;
     autoComplete?: string;
+    disabled?: boolean;
     valid?: boolean;
     okText?: string;
     errorText?: string;
@@ -557,6 +586,7 @@ const Field: React.FC<FieldProps> = ({
     placeholder,
     type = 'text',
     autoComplete,
+    disabled = false,
     valid,
     okText,
     errorText,
@@ -564,6 +594,7 @@ const Field: React.FC<FieldProps> = ({
     reserveHelperSpace = true,
     onEnter,
 }) => {
+    const helperId = useId();
     const helperText = errorText || (valid && okText ? okText : infoText) || (reserveHelperSpace ? '\u00A0' : '');
     const helperClass = errorText
         ? 'text-danger'
@@ -579,7 +610,10 @@ const Field: React.FC<FieldProps> = ({
                 <input
                     type={type}
                     autoComplete={autoComplete}
+                    disabled={disabled}
                     aria-label={placeholder}
+                    aria-describedby={helperId}
+                    aria-invalid={Boolean(errorText)}
                     className={inputClass}
                     placeholder={placeholder}
                     value={value}
@@ -590,7 +624,14 @@ const Field: React.FC<FieldProps> = ({
                                             <CheckIcon size={18} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-success" />
                 )}
             </div>
-            <p className={`mt-2 text-sm ${reserveHelperSpace ? 'min-h-[20px]' : ''} ${helperClass}`}>{helperText}</p>
+            <p
+                id={helperId}
+                aria-live="polite"
+                role={errorText ? 'alert' : undefined}
+                className={`mt-2 text-sm ${reserveHelperSpace ? 'min-h-[20px]' : ''} ${helperClass}`}
+            >
+                {helperText}
+            </p>
         </div>
     );
 };

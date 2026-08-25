@@ -11,29 +11,47 @@ export function useEmailCheck(email: string | undefined, opts?: { debounceMs?: n
   const debounceMs = opts?.debounceMs ?? 500;
   const [state, setState] = useState<UseEmailCheck>({ available: null, loading: false, error: null });
   const timerRef = useRef<number | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
+    const requestId = ++requestIdRef.current;
+
     if (!email) {
       setState({ available: null, loading: false, error: null });
       return;
     }
 
-    setState((s) => ({ ...s, loading: true, error: null }));
+    setState({ available: null, loading: true, error: null });
 
     if (timerRef.current) {
       window.clearTimeout(timerRef.current);
     }
 
     timerRef.current = window.setTimeout(async () => {
-      if (abortRef.current) abortRef.current.abort();
-      abortRef.current = new AbortController();
       try {
         const available = await checkEmailAvailability(email);
+        if (requestId !== requestIdRef.current) return;
         setState({ available, loading: false, error: null });
       } catch (err: any) {
-        if (err?.name === 'CanceledError' || err?.message === 'canceled') return;
-        setState({ available: null, loading: false, error: err?.message || '이메일 확인에 실패했습니다.' });
+        if (requestId !== requestIdRef.current) return;
+
+        const status = err?.response?.status;
+        if (status === 409) {
+          setState({ available: false, loading: false, error: null });
+          return;
+        }
+        if (status === 400) {
+          setState({ available: null, loading: false, error: '유효한 이메일을 입력하세요.' });
+          return;
+        }
+
+        setState({
+          available: null,
+          loading: false,
+          error: status === 429
+            ? '확인 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.'
+            : '이메일 확인에 실패했습니다. 잠시 후 다시 시도해주세요.',
+        });
       }
     }, debounceMs);
 
@@ -41,7 +59,6 @@ export function useEmailCheck(email: string | undefined, opts?: { debounceMs?: n
       if (timerRef.current) {
         window.clearTimeout(timerRef.current);
       }
-      if (abortRef.current) abortRef.current.abort();
     };
   }, [email, debounceMs]);
 
