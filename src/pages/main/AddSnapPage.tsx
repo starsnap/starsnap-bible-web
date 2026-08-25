@@ -17,6 +17,8 @@ const inputBase =
     'w-full h-11 rounded-lg border border-line bg-surface px-3.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand'
 
 const MAX_PHOTOS = 10
+const MAX_PHOTO_BYTES = 15 * 1024 * 1024
+const SUPPORTED_PHOTO_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp'])
 
 type SelectedImage = { file: File; preview: string }
 
@@ -26,6 +28,7 @@ const AddSnapPage: React.FC = () => {
     const navigate = useNavigate()
     const fileInputRef = useRef<HTMLInputElement>(null)
     const dateInputRef = useRef<HTMLInputElement>(null)
+    const submitInFlightRef = useRef(false)
 
     const [images, setImages] = useState<SelectedImage[]>([])
     const [title, setTitle] = useState('')
@@ -60,7 +63,16 @@ const AddSnapPage: React.FC = () => {
 
     const addFiles = (fileList: FileList | null) => {
         if (!fileList) return
-        const incoming = Array.from(fileList).filter((f) => f.type.startsWith('image/'))
+        const incoming = Array.from(fileList)
+        const invalid = incoming.find((file) => {
+            const contentType = file.type.split(';', 1)[0].trim().toLowerCase()
+            return !SUPPORTED_PHOTO_TYPES.has(contentType) || file.size <= 0 || file.size > MAX_PHOTO_BYTES
+        })
+        if (invalid) {
+            setErrorMessage('JPG, PNG, WebP 형식의 15 MiB 이하 사진만 업로드할 수 있습니다.')
+            return
+        }
+        setErrorMessage('')
         setImages((prev) => {
             const room = MAX_PHOTOS - prev.length
             if (room <= 0) return prev
@@ -193,6 +205,7 @@ const AddSnapPage: React.FC = () => {
     }
 
     const handleSubmit = async () => {
+        if (submitInFlightRef.current) return
         setErrorMessage('')
         setSuccessMessage('')
 
@@ -205,6 +218,7 @@ const AddSnapPage: React.FC = () => {
             return
         }
 
+        submitInFlightRef.current = true
         setSubmitting(true)
         try {
             const meta = { aiState: aiFlag, dateTaken, source }
@@ -226,7 +240,7 @@ const AddSnapPage: React.FC = () => {
             setSuccessMessage('스냅이 업로드되었습니다.')
             navigate('/')
         } catch (err: any) {
-            console.error('create snap error', err)
+            console.error('create snap failed')
             const msg =
                 err?.response?.data?.message ||
                 err?.response?.data ||
@@ -234,6 +248,7 @@ const AddSnapPage: React.FC = () => {
                 '스냅 업로드 중 오류가 발생했습니다.'
             setErrorMessage(String(msg))
         } finally {
+            submitInFlightRef.current = false
             setSubmitting(false)
         }
     }
@@ -245,7 +260,7 @@ const AddSnapPage: React.FC = () => {
             <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                 multiple
                 className="absolute w-0 h-0 overflow-hidden opacity-0"
                 onChange={(e) => {
@@ -277,13 +292,12 @@ const AddSnapPage: React.FC = () => {
                         </span>
                         <p className="text-base font-bold text-ink">이미지를 끌어다 놓으세요</p>
                         <p className="mt-1.5 text-sm text-muted">
-                            JPG, PNG · 최대 {MAX_PHOTOS}장까지 업로드할 수 있어요
+                            JPG, PNG, WebP · 장당 15 MiB · 최대 {MAX_PHOTOS}장
                         </p>
                         <button
                             type="button"
                             onClick={() => {
                                 openFilePicker()
-                                console.log('file picker opened')
                             }}
                             className="mt-5 min-h-11 rounded-xl bg-brand px-5 text-sm font-bold text-on-brand hover:brightness-95"
                         >

@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import React, { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useLocation, useParams } from 'react-router-dom'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { SnapFeedItem, SnapFeedComment, SnapSliceResponse } from '../../services/snapService'
 import {
     likeSnap,
@@ -11,6 +11,7 @@ import {
     deleteComment,
     reportComment,
     getSnapById,
+    getRelatedSnaps,
     getMyProfile,
     deleteSnap,
     reportSnap,
@@ -22,6 +23,8 @@ import {
     type StarSearchItem,
 } from '../../services/snapService'
 import { queryKeys } from '../../services/queryKeys'
+import MasonryGrid from '../../components/ui/MasonryGrid'
+import { getPhotoAspectRatio, type Snap } from '../../constant/mock/snaps'
 import {
     HeartIcon,
     BookmarkIcon,
@@ -71,6 +74,45 @@ const REPORT_REASONS: ReportReason[] = [
 ]
 
 const PHOTO_DOT_IDLE_MS = 1400
+
+type SnapMutationQueues = {
+    like: Map<string, Promise<void>>
+    save: Map<string, Promise<void>>
+}
+
+const mutationQueuesByQueryClient = new WeakMap<QueryClient, SnapMutationQueues>()
+
+const getSnapMutationQueues = (queryClient: QueryClient): SnapMutationQueues => {
+    const existing = mutationQueuesByQueryClient.get(queryClient)
+    if (existing) return existing
+
+    const created = {
+        like: new Map<string, Promise<void>>(),
+        save: new Map<string, Promise<void>>(),
+    }
+    mutationQueuesByQueryClient.set(queryClient, created)
+    return created
+}
+
+const enqueueSnapMutation = <T,>(
+    queue: Map<string, Promise<void>>,
+    snapId: string,
+    mutation: () => Promise<T>,
+): Promise<T> => {
+    const previous = queue.get(snapId) ?? Promise.resolve()
+    const operation = previous.then(mutation, mutation)
+    const tail = operation.then(
+        () => undefined,
+        () => undefined,
+    )
+    queue.set(snapId, tail)
+
+    return operation.finally(() => {
+        if (queue.get(snapId) === tail) {
+            queue.delete(snapId)
+        }
+    })
+}
 
 const normalizeIdList = (value: unknown): string[] => {
     if (typeof value === 'string') return [value]
@@ -210,6 +252,15 @@ const applySaveStateToFeedSlice = (
     }
 }
 
+const toRelatedSnapCard = (item: SnapFeedItem, index: number): Snap => ({
+    id: item.snapData.snapId,
+    author: item.createdUser.username,
+    authorImageKey: item.createdUser.imageKey ?? null,
+    aspectRatio: getPhotoAspectRatio(item.snapData.photos?.[0], index),
+    photoKey: item.snapData.photos?.[0]?.fileKey,
+    liked: !!item.snapData.likeState,
+})
+
 const SnapDetailSkeleton: React.FC = () => (
     <div className="px-4 sm:px-6 lg:px-8 py-5 sm:py-7" aria-busy="true">
         <div className="h-4 w-16 rounded bg-placeholder animate-pulse" />
@@ -244,11 +295,13 @@ const SnapDetailSkeleton: React.FC = () => (
 const SnapDetailPage: React.FC = () => {
     const navigate = useNavigate()
     const queryClient = useQueryClient()
+    const mutationQueues = useMemo(() => getSnapMutationQueues(queryClient), [queryClient])
     const location = useLocation()
     const { snapId } = useParams<{ snapId: string }>()
 
     const state = (location.state as { feedItem?: SnapFeedItem; canEdit?: boolean } | null) ?? null
     const feedItem = state?.feedItem
+    const targetSnapId = snapId ?? feedItem?.snapData.snapId ?? ''
     const [resolvedFeedItem, setResolvedFeedItem] = useState<SnapFeedItem | null>(feedItem ?? null)
     const [snapLoading, setSnapLoading] = useState(false)
 
@@ -285,135 +338,158 @@ const SnapDetailPage: React.FC = () => {
     const commentInputRef = useRef<HTMLInputElement | null>(null)
     const commentsSectionRef = useRef<HTMLDivElement | null>(null)
     const viewedSnapIdRef = useRef<string | null>(null)
+    const snapLoadRequestIdRef = useRef(0)
+    const targetSnapIdRef = useRef(targetSnapId)
+    const routeGenerationRef = useRef(0)
+    const currentPhotoSnapIdRef = useRef(targetSnapId)
+    const localCommentsSnapIdRef = useRef(targetSnapId)
+    const isCurrentSnapOperation = useCallback(
+        (operationSnapId: string, operationGeneration: number) =>
+            targetSnapIdRef.current === operationSnapId &&
+            routeGenerationRef.current === operationGeneration,
+        [],
+    )
 
-    const activeFeedItem = resolvedFeedItem
-
-    const reloadSnapDetail = useCallback(async () => {
-        const targetSnapId = snapId ?? resolvedFeedItem?.snapData?.snapId
-        if (!targetSnapId) return
-
-        setSnapLoading(true)
-        try {
-            const latest = await getSnapById(targetSnapId)
-            if (latest) {
-                setResolvedFeedItem(latest)
-                setLocalComments([])
-            }
-        } catch {
-            // ignore
-        } finally {
-            setSnapLoading(false)
-        }
-    }, [snapId, resolvedFeedItem?.snapData?.snapId])
+    const activeFeedItem =
+        resolvedFeedItem?.snapData.snapId === targetSnapId
+            ? resolvedFeedItem
+            : feedItem?.snapData.snapId === targetSnapId
+              ? feedItem
+              : null
+    const visibleCurrentPhoto =
+        currentPhotoSnapIdRef.current === targetSnapId ? currentPhoto : 0
+    const visibleLocalComments =
+        localCommentsSnapIdRef.current === targetSnapId ? localComments : []
 
     const handleLike = useCallback(async () => {
         if (liking || !activeFeedItem) return
         setLiking(true)
-        const previousLiked = liked
-        const targetSnapId = activeFeedItem.snapData.snapId
+        const operationSnapId = activeFeedItem.snapData.snapId
+        const operationGeneration = routeGenerationRef.current
         try {
-            const result = await likeSnap(targetSnapId)
-            setLiked(result.linked)
-
-            setResolvedFeedItem((prev) =>
-                prev && prev.snapData.snapId === targetSnapId
-                    ? applyLikeStateToFeedItem(prev, result.linked)
-                    : prev,
+            const result = await enqueueSnapMutation(mutationQueues.like, operationSnapId, () =>
+                likeSnap(operationSnapId),
             )
 
             queryClient.setQueryData(
                 queryKeys.feedSnaps(0, 24),
                 (oldData: SnapSliceResponse | undefined) =>
-                    applyLikeStateToFeedSlice(oldData, targetSnapId, result.linked),
+                    applyLikeStateToFeedSlice(oldData, operationSnapId, result.linked),
             )
             queryClient.setQueryData(
                 queryKeys.mySnaps(0, 100),
                 (oldData: SnapFeedItem[] | undefined) =>
-                    applyLikeStateToFeedList(oldData, targetSnapId, result.linked),
+                    applyLikeStateToFeedList(oldData, operationSnapId, result.linked),
             )
             queryClient.setQueryData(
                 queryKeys.savedSnaps,
                 (oldData: SnapFeedItem[] | undefined) =>
-                    applyLikeStateToFeedList(oldData, targetSnapId, result.linked),
+                    applyLikeStateToFeedList(oldData, operationSnapId, result.linked),
             )
             queryClient.setQueryData(
-                queryKeys.snapById(targetSnapId),
+                queryKeys.snapById(operationSnapId),
                 (oldData: SnapFeedItem | null | undefined) =>
                     oldData ? applyLikeStateToFeedItem(oldData, result.linked) : oldData,
             )
+
+            if (!isCurrentSnapOperation(operationSnapId, operationGeneration)) return
+
+            setLiked(result.linked)
+            setResolvedFeedItem((prev) =>
+                prev && prev.snapData.snapId === operationSnapId
+                    ? applyLikeStateToFeedItem(prev, result.linked)
+                    : prev,
+            )
         } catch {
-            setLiked(previousLiked)
+            // No optimistic state was applied; keep the last confirmed server result.
         } finally {
-            setLiking(false)
+            if (isCurrentSnapOperation(operationSnapId, operationGeneration)) {
+                setLiking(false)
+            }
         }
-    }, [liking, liked, activeFeedItem, queryClient])
+    }, [liking, activeFeedItem, queryClient, isCurrentSnapOperation, mutationQueues])
 
     const handleSave = useCallback(async () => {
         if (saving || !activeFeedItem) return
         setSaving(true)
-        const targetSnapId = activeFeedItem.snapData.snapId
+        const operationSnapId = activeFeedItem.snapData.snapId
+        const operationGeneration = routeGenerationRef.current
         try {
             const nextSaved = !saved
             if (saved) {
-                await unsaveSnap(targetSnapId)
+                await enqueueSnapMutation(mutationQueues.save, operationSnapId, () =>
+                    unsaveSnap(operationSnapId),
+                )
             } else {
-                await saveSnap(targetSnapId)
+                await enqueueSnapMutation(mutationQueues.save, operationSnapId, () =>
+                    saveSnap(operationSnapId),
+                )
             }
-
-            setSaved(nextSaved)
-            setResolvedFeedItem((prev) =>
-                prev && prev.snapData.snapId === targetSnapId
-                    ? applySaveStateToFeedItem(prev, nextSaved)
-                    : prev,
-            )
 
             queryClient.setQueryData(
                 queryKeys.feedSnaps(0, 24),
                 (oldData: SnapSliceResponse | undefined) =>
-                    applySaveStateToFeedSlice(oldData, targetSnapId, nextSaved),
+                    applySaveStateToFeedSlice(oldData, operationSnapId, nextSaved),
             )
             queryClient.setQueryData(
                 queryKeys.mySnaps(0, 100),
                 (oldData: SnapFeedItem[] | undefined) =>
-                    applySaveStateToFeedList(oldData, targetSnapId, nextSaved),
+                    applySaveStateToFeedList(oldData, operationSnapId, nextSaved),
             )
             queryClient.setQueryData(
                 queryKeys.savedSnaps,
                 (oldData: SnapFeedItem[] | undefined) => {
                     if (!oldData) return oldData
                     if (nextSaved) {
-                        const exists = oldData.some((item) => item.snapData.snapId === targetSnapId)
+                        const exists = oldData.some((item) => item.snapData.snapId === operationSnapId)
                         if (exists) {
-                            return applySaveStateToFeedList(oldData, targetSnapId, true)
+                            return applySaveStateToFeedList(oldData, operationSnapId, true)
                         }
                         return [...oldData, applySaveStateToFeedItem(activeFeedItem, true)]
                     }
-                    return oldData.filter((item) => item.snapData.snapId !== targetSnapId)
+                    return oldData.filter((item) => item.snapData.snapId !== operationSnapId)
                 },
             )
             queryClient.setQueryData(
-                queryKeys.snapById(targetSnapId),
+                queryKeys.snapById(operationSnapId),
                 (oldData: SnapFeedItem | null | undefined) =>
                     oldData ? applySaveStateToFeedItem(oldData, nextSaved) : oldData,
+            )
+
+            if (!isCurrentSnapOperation(operationSnapId, operationGeneration)) return
+
+            setSaved(nextSaved)
+            setResolvedFeedItem((prev) =>
+                prev && prev.snapData.snapId === operationSnapId
+                    ? applySaveStateToFeedItem(prev, nextSaved)
+                    : prev,
             )
         } catch {
             // ignore
         } finally {
-            setSaving(false)
+            if (isCurrentSnapOperation(operationSnapId, operationGeneration)) {
+                setSaving(false)
+            }
         }
-    }, [saving, saved, activeFeedItem, queryClient])
+    }, [saving, saved, activeFeedItem, queryClient, isCurrentSnapOperation, mutationQueues])
 
     const handleCommentSubmit = useCallback(async () => {
         if (!activeFeedItem || !commentText.trim() || submittingComment) return
+        const operationSnapId = activeFeedItem.snapData.snapId
+        const operationGeneration = routeGenerationRef.current
+        const submittedCommentText = commentText.trim()
         setSubmittingComment(true)
         setCommentError('')
         try {
-            const createdComment = await createComment(activeFeedItem.snapData.snapId, commentText.trim())
+            const createdComment = await createComment(operationSnapId, submittedCommentText)
+            if (!isCurrentSnapOperation(operationSnapId, operationGeneration)) return
+
+            localCommentsSnapIdRef.current = operationSnapId
             setLocalComments((prev) => [
                 ...prev,
                 {
                     id: (createdComment as any).id,
-                    content: (createdComment as any).content ?? commentText.trim(),
+                    content: (createdComment as any).content ?? submittedCommentText,
                     username: (createdComment as any).username ?? '나',
                     createdAt: (createdComment as any).createdAt ?? new Date().toISOString(),
                     profileKey: (createdComment as any).profileKey ?? null,
@@ -421,17 +497,64 @@ const SnapDetailPage: React.FC = () => {
             ])
             setCommentText('')
         } catch (e) {
-            setCommentError(e instanceof Error ? e.message : '댓글 작성에 실패했습니다.')
+            if (isCurrentSnapOperation(operationSnapId, operationGeneration)) {
+                setCommentError(e instanceof Error ? e.message : '댓글 작성에 실패했습니다.')
+            }
         } finally {
-            setSubmittingComment(false)
+            if (isCurrentSnapOperation(operationSnapId, operationGeneration)) {
+                setSubmittingComment(false)
+            }
         }
-    }, [activeFeedItem, commentText, submittingComment])
+    }, [activeFeedItem, commentText, submittingComment, isCurrentSnapOperation])
 
     useEffect(() => {
-        setResolvedFeedItem(feedItem ?? null)
-    }, [feedItem])
+        setResolvedFeedItem(feedItem?.snapData.snapId === targetSnapId ? feedItem : null)
+    }, [feedItem, targetSnapId])
 
-    useEffect(() => {
+    useLayoutEffect(() => {
+        targetSnapIdRef.current = targetSnapId
+        routeGenerationRef.current += 1
+        currentPhotoSnapIdRef.current = targetSnapId
+        localCommentsSnapIdRef.current = targetSnapId
+        setSnapLoading(targetSnapId.length > 0)
+        setCurrentPhoto(0)
+        setLocalComments([])
+        setCommentText('')
+        setCommentError('')
+        setCommentActionError('')
+        setLiking(false)
+        setSaving(false)
+        setSubmittingComment(false)
+        setMenuLoading(false)
+        setDeleteCommentLoading(false)
+        setReportSubmitting(false)
+        setCanEdit(false)
+        setMenuOpen(false)
+        setDeleteConfirmOpen(false)
+        setDeleteCommentTarget(null)
+        setReportTarget(null)
+        setSelectedReportReason(null)
+        setReportBlockUser(false)
+        setReportError('')
+        setDragOffsetX(0)
+        setIsDragging(false)
+        setShowPhotoDots(false)
+        dragStartXRef.current = null
+        dragDeltaXRef.current = 0
+        isDraggingRef.current = false
+
+        if (dotHideTimeoutRef.current !== null) {
+            window.clearTimeout(dotHideTimeoutRef.current)
+            dotHideTimeoutRef.current = null
+        }
+
+        return () => {
+            routeGenerationRef.current += 1
+            targetSnapIdRef.current = ''
+        }
+    }, [targetSnapId])
+
+    useLayoutEffect(() => {
         if (!activeFeedItem) return
         setSnapTitle(activeFeedItem.snapData.title)
         setLiked(!!activeFeedItem.snapData.likeState)
@@ -439,17 +562,63 @@ const SnapDetailPage: React.FC = () => {
     }, [activeFeedItem])
 
     useEffect(() => {
-        void reloadSnapDetail()
-    }, [reloadSnapDetail])
+        if (!targetSnapId) {
+            snapLoadRequestIdRef.current += 1
+            setSnapLoading(false)
+            return
+        }
+
+        const requestId = ++snapLoadRequestIdRef.current
+        const requestGeneration = routeGenerationRef.current
+        setSnapLoading(true)
+
+        const loadSnapDetail = async () => {
+            try {
+                const latest = await getSnapById(targetSnapId)
+                if (
+                    snapLoadRequestIdRef.current !== requestId ||
+                    targetSnapIdRef.current !== targetSnapId ||
+                    routeGenerationRef.current !== requestGeneration
+                ) {
+                    return
+                }
+                if (latest?.snapData.snapId === targetSnapId) {
+                    setResolvedFeedItem(latest)
+                }
+            } catch {
+                // Keep route-state data when the refresh fails.
+            } finally {
+                if (
+                    snapLoadRequestIdRef.current === requestId &&
+                    targetSnapIdRef.current === targetSnapId &&
+                    routeGenerationRef.current === requestGeneration
+                ) {
+                    setSnapLoading(false)
+                }
+            }
+        }
+
+        void loadSnapDetail()
+
+        return () => {
+            if (snapLoadRequestIdRef.current === requestId) {
+                snapLoadRequestIdRef.current += 1
+            }
+        }
+    }, [targetSnapId])
+
+    useLayoutEffect(() => {
+        const photoCount = Math.max(activeFeedItem?.snapData.photos?.length ?? 0, 1)
+        setCurrentPhoto((current) => Math.min(current, photoCount - 1))
+    }, [activeFeedItem?.snapData.snapId, activeFeedItem?.snapData.photos?.length])
 
     useEffect(() => {
-        const targetSnapId = snapId ?? resolvedFeedItem?.snapData?.snapId
         if (!targetSnapId) return
         if (viewedSnapIdRef.current === targetSnapId) return
 
         viewedSnapIdRef.current = targetSnapId
         void increaseSnapView(targetSnapId)
-    }, [snapId, resolvedFeedItem?.snapData?.snapId])
+    }, [targetSnapId])
 
     useEffect(() => {
         if (!menuOpen) return
@@ -504,6 +673,37 @@ const SnapDetailPage: React.FC = () => {
         enabled: !!activeFeedItem,
     })
 
+    const relatedSourceSnapId = snapId ?? activeFeedItem?.snapData.snapId ?? ''
+    const relatedSnapsQuery = useQuery({
+        queryKey: queryKeys.relatedSnaps(relatedSourceSnapId, 0, 12),
+        queryFn: () => getRelatedSnaps(relatedSourceSnapId, 0, 12),
+        enabled: relatedSourceSnapId.length > 0,
+    })
+
+    const relatedFeedItems = useMemo(
+        () =>
+            (relatedSnapsQuery.data?.content ?? []).filter(
+                (item) => item.snapData.snapId !== relatedSourceSnapId,
+            ),
+        [relatedSnapsQuery.data?.content, relatedSourceSnapId],
+    )
+    const relatedSnaps = useMemo(
+        () => relatedFeedItems.map(toRelatedSnapCard),
+        [relatedFeedItems],
+    )
+    const relatedFeedItemMap = useMemo(
+        () => new Map(relatedFeedItems.map((item) => [item.snapData.snapId, item])),
+        [relatedFeedItems],
+    )
+    const handleRelatedSnapClick = useCallback(
+        (relatedSnap: Snap) => {
+            if (relatedSnap.id === relatedSourceSnapId) return
+            const relatedFeedItem = relatedFeedItemMap.get(relatedSnap.id)
+            navigate(`/snap/${relatedSnap.id}`, { state: { feedItem: relatedFeedItem } })
+        },
+        [navigate, relatedFeedItemMap, relatedSourceSnapId],
+    )
+
     const handleGoEditPage = useCallback(() => {
         if (!activeFeedItem || !canEdit) return
         setMenuOpen(false)
@@ -524,19 +724,27 @@ const SnapDetailPage: React.FC = () => {
     const handleDeleteSnap = useCallback(async () => {
         if (!activeFeedItem || !canEdit || menuLoading) return
 
+        const operationSnapId = activeFeedItem.snapData.snapId
+        const operationGeneration = routeGenerationRef.current
         setMenuLoading(true)
         try {
-            await deleteSnap(activeFeedItem.snapData.snapId)
+            await deleteSnap(operationSnapId)
+            if (!isCurrentSnapOperation(operationSnapId, operationGeneration)) return
+
             setDeleteConfirmOpen(false)
             setMenuOpen(false)
             navigate('/profile', { replace: true })
         } catch {
-            setDeleteConfirmOpen(false)
-            window.alert('스냅 삭제에 실패했습니다.')
+            if (isCurrentSnapOperation(operationSnapId, operationGeneration)) {
+                setDeleteConfirmOpen(false)
+                window.alert('스냅 삭제에 실패했습니다.')
+            }
         } finally {
-            setMenuLoading(false)
+            if (isCurrentSnapOperation(operationSnapId, operationGeneration)) {
+                setMenuLoading(false)
+            }
         }
-    }, [activeFeedItem, canEdit, menuLoading, navigate])
+    }, [activeFeedItem, canEdit, menuLoading, navigate, isCurrentSnapOperation])
 
     const handleReportSnap = useCallback(async () => {
         if (!activeFeedItem || menuLoading) return
@@ -557,14 +765,19 @@ const SnapDetailPage: React.FC = () => {
     }, [])
 
     const handleDeleteComment = useCallback(async (commentId: string) => {
-        if (deleteCommentLoading) return
+        if (deleteCommentLoading || !activeFeedItem) return
+        const operationSnapId = activeFeedItem.snapData.snapId
+        const operationGeneration = routeGenerationRef.current
         setDeleteCommentLoading(true)
         setCommentActionError('')
         try {
             await deleteComment(commentId)
+            if (!isCurrentSnapOperation(operationSnapId, operationGeneration)) return
+
+            localCommentsSnapIdRef.current = operationSnapId
             setLocalComments((prev) => prev.filter((c) => c.id !== commentId))
             setResolvedFeedItem((prev) =>
-                prev
+                prev?.snapData.snapId === operationSnapId
                     ? {
                           ...prev,
                           snapData: {
@@ -576,11 +789,15 @@ const SnapDetailPage: React.FC = () => {
             )
             setDeleteCommentTarget(null)
         } catch {
-            setCommentActionError('댓글 삭제에 실패했습니다.')
+            if (isCurrentSnapOperation(operationSnapId, operationGeneration)) {
+                setCommentActionError('댓글 삭제에 실패했습니다.')
+            }
         } finally {
-            setDeleteCommentLoading(false)
+            if (isCurrentSnapOperation(operationSnapId, operationGeneration)) {
+                setDeleteCommentLoading(false)
+            }
         }
-    }, [deleteCommentLoading])
+    }, [activeFeedItem, deleteCommentLoading, isCurrentSnapOperation])
 
     const handleCloseReportSheet = useCallback(() => {
         if (reportSubmitting) return
@@ -591,8 +808,10 @@ const SnapDetailPage: React.FC = () => {
     }, [reportSubmitting])
 
     const handleSubmitReport = useCallback(async () => {
-        if (!reportTarget || !selectedReportReason || reportSubmitting) return
+        if (!reportTarget || !selectedReportReason || reportSubmitting || !targetSnapId) return
 
+        const operationSnapId = targetSnapId
+        const operationGeneration = routeGenerationRef.current
         setReportSubmitting(true)
         setReportError('')
         try {
@@ -604,16 +823,22 @@ const SnapDetailPage: React.FC = () => {
             } else {
                 await reportComment(reportTarget.id, explanation)
             }
+            if (!isCurrentSnapOperation(operationSnapId, operationGeneration)) return
+
             setReportTarget(null)
             setSelectedReportReason(null)
             setReportBlockUser(false)
             window.alert('신고가 접수되었습니다.')
         } catch {
-            setReportError('신고 접수에 실패했습니다. 잠시 후 다시 시도해주세요.')
+            if (isCurrentSnapOperation(operationSnapId, operationGeneration)) {
+                setReportError('신고 접수에 실패했습니다. 잠시 후 다시 시도해주세요.')
+            }
         } finally {
-            setReportSubmitting(false)
+            if (isCurrentSnapOperation(operationSnapId, operationGeneration)) {
+                setReportSubmitting(false)
+            }
         }
-    }, [reportTarget, selectedReportReason, reportSubmitting, reportBlockUser])
+    }, [reportTarget, selectedReportReason, reportSubmitting, reportBlockUser, targetSnapId, isCurrentSnapOperation])
 
     // Hooks below must run unconditionally on every render (Rules of Hooks) — a direct/hard
     // navigation to this page renders once with activeFeedItem still null before the async
@@ -842,7 +1067,7 @@ const SnapDetailPage: React.FC = () => {
     const creatorImageCandidates = getImageCandidates(creatorImageKey)
     const photos = snapData.photos ?? []
     const photoCount = Math.max(photos.length, 1)
-    const allComments = [...(snapData.comments ?? []), ...localComments]
+    const allComments = [...(snapData.comments ?? []), ...visibleLocalComments]
 
     const formattedDate = snapData.createdAt
         ? new Date(snapData.createdAt).toLocaleDateString('ko-KR', {
@@ -853,11 +1078,13 @@ const SnapDetailPage: React.FC = () => {
         : ''
 
     const prevPhoto = () => {
+        currentPhotoSnapIdRef.current = targetSnapId
         setCurrentPhoto((p) => Math.max(0, p - 1))
         showPhotoDotsTemporarily()
     }
 
     const nextPhoto = () => {
+        currentPhotoSnapIdRef.current = targetSnapId
         setCurrentPhoto((p) => Math.min(photoCount - 1, p + 1))
         showPhotoDotsTemporarily()
     }
@@ -999,7 +1226,7 @@ const SnapDetailPage: React.FC = () => {
                         <div
                             className="h-full flex"
                             style={{
-                                transform: `translateX(calc(${currentPhoto * -100}% + ${dragOffsetX}px))`,
+                                transform: `translateX(calc(${visibleCurrentPhoto * -100}% + ${dragOffsetX}px))`,
                                 transition: isDragging ? 'none' : 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1)',
                             }}
                         >
@@ -1030,7 +1257,7 @@ const SnapDetailPage: React.FC = () => {
                             ))}
                         </div>
                         {/* Prev button */}
-                        {currentPhoto > 0 && (
+                        {visibleCurrentPhoto > 0 && (
                             <button
                                 onClick={prevPhoto}
                                 className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-[var(--ss-surface-translucent)] backdrop-blur flex items-center justify-center shadow-sm z-10 hover:bg-panel transition-colors"
@@ -1040,7 +1267,7 @@ const SnapDetailPage: React.FC = () => {
                             </button>
                         )}
                         {/* Next button */}
-                        {currentPhoto < photoCount - 1 && (
+                        {visibleCurrentPhoto < photoCount - 1 && (
                             <button
                                 onClick={nextPhoto}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-[var(--ss-surface-translucent)] backdrop-blur flex items-center justify-center shadow-sm z-10 hover:bg-panel transition-colors"
@@ -1052,7 +1279,7 @@ const SnapDetailPage: React.FC = () => {
                         {/* Photo count badge */}
                         {photoCount > 1 && (
                             <span className="absolute top-3 right-3 bg-black/50 text-on-media text-xs px-2.5 py-1 rounded-full z-10">
-                                {currentPhoto + 1} / {photoCount}
+                                {visibleCurrentPhoto + 1} / {photoCount}
                             </span>
                         )}
 
@@ -1068,11 +1295,12 @@ const SnapDetailPage: React.FC = () => {
                                         <button
                                             key={i}
                                             onClick={() => {
+                                                currentPhotoSnapIdRef.current = targetSnapId
                                                 setCurrentPhoto(i)
                                                 showPhotoDotsTemporarily()
                                             }}
                                             className={`pointer-events-auto h-2 w-2 rounded-full bg-brand transition-opacity ${
-                                                i === currentPhoto ? 'opacity-100' : 'opacity-45'
+                                                i === visibleCurrentPhoto ? 'opacity-100' : 'opacity-45'
                                             }`}
                                             aria-label={`${i + 1}번 사진으로 이동`}
                                         />
@@ -1269,10 +1497,43 @@ const SnapDetailPage: React.FC = () => {
                     )}
 
                     <hr className="my-4 border-line" />
-                    <p className="text-sm font-bold text-ink">관련 Snap</p>
-                    <div className="mt-2 h-16 rounded-xl border border-dashed border-line bg-surface flex items-center justify-center text-xs text-muted">
-                        준비중
-                    </div>
+                    <section aria-labelledby="related-snaps-title">
+                        <p id="related-snaps-title" className="text-sm font-bold text-ink">
+                            비슷한 얼굴의 스냅
+                        </p>
+                        <div className="mt-3">
+                            {relatedSnapsQuery.isError ? (
+                                <div className="rounded-xl border border-line bg-surface px-4 py-4 text-center">
+                                    <p className="text-xs text-muted">연관 스냅을 불러오지 못했습니다.</p>
+                                    <button
+                                        type="button"
+                                        onClick={() => void relatedSnapsQuery.refetch()}
+                                        className="mt-2 text-xs font-bold text-ink underline underline-offset-2"
+                                    >
+                                        다시 시도
+                                    </button>
+                                </div>
+                            ) : relatedSnapsQuery.isLoading ? (
+                                <MasonryGrid
+                                    snaps={[]}
+                                    showAuthor={false}
+                                    columnsClass="columns-2 sm:columns-3"
+                                    isLoading
+                                />
+                            ) : relatedSnaps.length > 0 ? (
+                                <MasonryGrid
+                                    snaps={relatedSnaps}
+                                    showAuthor={false}
+                                    columnsClass="columns-2 sm:columns-3"
+                                    onSnapClick={handleRelatedSnapClick}
+                                />
+                            ) : (
+                                <div className="rounded-xl border border-dashed border-line bg-surface px-4 py-5 text-center text-xs text-muted">
+                                    비슷한 얼굴이 담긴 다른 스냅이 없습니다.
+                                </div>
+                            )}
+                        </div>
+                    </section>
                 </div>
             </div>
 

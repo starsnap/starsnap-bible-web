@@ -20,4 +20,6 @@ export const queryKeys = {
     mySnaps: (page: number, size: number) => ['my-snaps', page, size] as const,
     savedSnaps: ['saved-snaps'] as const,
     snapById: (snapId: string) => ['snap-by-id', snapId] as const,
+    relatedSnaps: (snapId: string, page: number, size: number) =>
+        ['related-snaps', snapId, page, size] as const,
 }

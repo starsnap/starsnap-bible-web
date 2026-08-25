@@ -49,6 +49,9 @@ export type PhotoUploadMeta = {
     /** yyyy-MM-dd */
     dateTaken: string;
     source: string;
+    contentType?: string;
+    fileSize?: number;
+    conditionalWrite?: boolean;
 };
 
 export type CreateSnapRequest = {
@@ -360,10 +363,18 @@ export async function uploadToPresignedUrl(
     file: File,
     requiredHeaders: Record<string, string>,
 ): Promise<void> {
+    const safeRequiredHeaders = Object.fromEntries(
+        Object.entries(requiredHeaders).filter(
+            ([name]) =>
+                !['authorization', 'cookie', 'proxy-authorization', 'content-length', 'host'].includes(
+                    name.toLowerCase(),
+                ),
+        ),
+    )
     await axios.put(presignedUrl, file, {
         headers: {
             'Content-Type': file.type || 'application/octet-stream',
-            ...requiredHeaders,
+            ...safeRequiredHeaders,
         },
         withCredentials: false,
     });
@@ -371,7 +382,17 @@ export async function uploadToPresignedUrl(
 
 /** 단일 사진 업로드 (presign → S3 PUT) 후 fileKey 반환 */
 export async function uploadPhoto(file: File, meta: PhotoUploadMeta): Promise<string> {
-    const { presignedUrl, requiredHeaders } = await getPhotoPresignedUrl(meta);
+    const contentType = file.type.split(';', 1)[0].trim().toLowerCase();
+    const supportedTypes = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+    if (!supportedTypes.has(contentType) || file.size <= 0 || file.size > 15 * 1024 * 1024) {
+        throw new Error('JPG, PNG, WebP 형식의 15 MiB 이하 사진만 업로드할 수 있습니다.');
+    }
+    const { presignedUrl, requiredHeaders } = await getPhotoPresignedUrl({
+        ...meta,
+        contentType,
+        fileSize: file.size,
+        conditionalWrite: true,
+    });
     await uploadToPresignedUrl(presignedUrl, file, requiredHeaders);
     return extractFileKey(presignedUrl);
 }
@@ -425,6 +446,18 @@ export async function getSnapsByStarGroup(starGroupId: string, page = 0, size = 
 /** 메인 피드 조회 (GET /api/snap/feed?page=&size=) */
 export async function getFeedSnaps(page = 0, size = 24): Promise<SnapSliceResponse> {
     const resp = await AuthAxios.get<SnapSliceResponse>('snap/feed', {
+        params: {
+            page,
+            size,
+        },
+    });
+
+    return resp.data;
+}
+
+/** 얼굴 벡터 유사도 기반 연관 스냅 조회 (GET /api/snap/{snapId}/related) */
+export async function getRelatedSnaps(snapId: string, page = 0, size = 12): Promise<SnapSliceResponse> {
+    const resp = await AuthAxios.get<SnapSliceResponse>(`snap/${encodeURIComponent(snapId)}/related`, {
         params: {
             page,
             size,
