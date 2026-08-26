@@ -110,6 +110,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html.chat-login-viewport,
+html.chat-login-viewport body,
+html.chat-login-viewport #root {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 :where(
   input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
   select,
@@ -170,6 +179,16 @@ textarea {
   textarea
 ):not(.border-danger) {
   border-color: var(--ss-border-strong);
+}
+
+.conversation-search-input {
+  border: 1px solid var(--ss-border);
+}
+
+.conversation-search-input:focus-visible {
+  border-color: var(--ss-border);
+  outline: 1px solid color-mix(in srgb, var(--ss-focus-ring) 28%, transparent);
+  outline-offset: 1px;
 }
 
 button:disabled {

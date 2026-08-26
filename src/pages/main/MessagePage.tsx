@@ -1072,7 +1072,7 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
                         <SearchIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
                         <input
                             id="conversation-search"
-                            className="h-11 w-full rounded-lg bg-surface pl-10 pr-3 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand/25"
+                            className="conversation-search-input h-11 w-full rounded-lg bg-surface pl-10 pr-3 text-sm text-ink placeholder:text-muted"
                             placeholder="대화 검색"
                             value={keyword}
                             onChange={(e) => setKeyword(e.target.value)}
