@@ -1,18 +1,45 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import CustomAxios from '../../lib/axios/CustomAxios';
+import { getSocialAppUrl } from '../../lib/appSurface';
 import { queryClient } from '../../lib/query/queryClient';
 import token from '../../lib/token/token';
 
-const LoginPage: React.FC = () => {
+type LoginPageProps = {
+    surface?: 'social' | 'chat';
+};
+
+type LoginLocationState = {
+    from?: unknown;
+};
+
+const resolvePostLoginPath = (state: LoginLocationState | null): string => {
+    const path = state?.from;
+    if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')) return '/';
+    return path;
+};
+
+const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
+    const location = useLocation();
     const navigate = useNavigate();
+    const isChatSurface = surface === 'chat';
 
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
     const isEnabled = identifier.trim() !== '' && password.trim() !== '' && !loading;
+
+    useEffect(() => {
+        if (!isChatSurface) return;
+
+        const previousTitle = document.title;
+        document.title = 'StarSnap Chat 로그인';
+        return () => {
+            document.title = previousTitle;
+        };
+    }, [isChatSurface]);
 
     const handleLogin = async () => {
         if (!isEnabled) return;
@@ -29,7 +56,7 @@ const LoginPage: React.FC = () => {
             if (resp.status === 200 && resp.data) {
                 queryClient.clear();
                 token.markAuthenticated();
-                navigate('/');
+                navigate(resolvePostLoginPath(location.state as LoginLocationState | null), { replace: true });
             } else {
                 setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
             }
@@ -72,9 +99,13 @@ const LoginPage: React.FC = () => {
                             height={96}
                             className="h-10 w-10 shrink-0 rounded-xl object-cover"
                         />
-                        StarSnap
+                        {isChatSurface ? 'StarSnap Chat' : 'StarSnap'}
                     </h1>
-                    <p className="mt-2 text-sm text-sub">좋아하는 스타의 순간을 한곳에 모아보세요</p>
+                    <p className="mt-2 text-sm text-sub">
+                        {isChatSurface
+                            ? 'SNS에서 이어진 대화를 메시지 전용 화면에서 만나보세요'
+                            : '좋아하는 스타의 순간을 한곳에 모아보세요'}
+                    </p>
                 </div>
 
                 <form className="mt-7 flex flex-col gap-4" onSubmit={handleSubmit} autoComplete="off">
@@ -122,13 +153,22 @@ const LoginPage: React.FC = () => {
 
                     <div className="flex min-h-11 items-center justify-center text-center text-sm text-sub">
                         아직 계정이 없으신가요?{' '}
-                        <button
-                            type="button"
-                            onClick={() => navigate('/signup')}
-                            className="min-h-11 rounded-lg px-1.5 font-bold text-ink underline decoration-brand decoration-2 underline-offset-4"
-                        >
-                            회원가입
-                        </button>
+                        {isChatSurface ? (
+                            <a
+                                href={getSocialAppUrl('/signup')}
+                                className="inline-flex min-h-11 items-center rounded-lg px-1.5 font-bold text-ink underline decoration-brand decoration-2 underline-offset-4"
+                            >
+                                SNS에서 회원가입
+                            </a>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => navigate('/signup')}
+                                className="min-h-11 rounded-lg px-1.5 font-bold text-ink underline decoration-brand decoration-2 underline-offset-4"
+                            >
+                                회원가입
+                            </button>
+                        )}
                     </div>
                 </form>
             </div>

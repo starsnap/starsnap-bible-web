@@ -3,6 +3,11 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import type { AxiosError } from 'axios'
 import { ChevronLeftIcon, SearchIcon, SendIcon } from '../../components/icons'
+import {
+    ChatFriendListSkeleton,
+    ChatMessageListSkeleton,
+    ChatRoomListSkeleton,
+} from '../../components/ui/ChatSkeletons'
 import { FiEdit2, FiLogOut, FiPlus, FiTrash2, FiUserPlus } from 'react-icons/fi'
 import {
     getMyFriends,
@@ -54,6 +59,10 @@ const DEFAULT_MESSAGE_RATE_LIMIT_MESSAGE = '메시지를 너무 빠르게 보내
 type PendingSendDraft = {
     roomId: string
     content: string
+}
+
+type MessagePageProps = {
+    standalone?: boolean
 }
 
 const parseUtcDateTime = (iso: string) => {
@@ -170,8 +179,8 @@ const resolveChatRoomErrorMessage = (error: unknown) => {
     return null
 }
 
-const MessagePage: React.FC = () => {
-    const [searchParams] = useSearchParams()
+const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
+    const [searchParams, setSearchParams] = useSearchParams()
     const targetUsername = (searchParams.get('user') || '').trim()
     const [keyword, setKeyword] = useState('')
     const [selectedRoom, setSelectedRoom] = useState<ChatRoomSummary | null>(null)
@@ -189,6 +198,9 @@ const MessagePage: React.FC = () => {
     const [editText, setEditText] = useState('')
     const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null)
     const [messageActionLoading, setMessageActionLoading] = useState(false)
+    const [historyLoading, setHistoryLoading] = useState(false)
+    const [olderMessagesLoading, setOlderMessagesLoading] = useState(false)
+    const [directRoomCreating, setDirectRoomCreating] = useState(false)
     const [isCreateRoomOpen, setIsCreateRoomOpen] = useState(false)
     const [newRoomTitle, setNewRoomTitle] = useState('')
     const [newRoomMemberNames, setNewRoomMemberNames] = useState('')
@@ -205,9 +217,9 @@ const MessagePage: React.FC = () => {
     const inputRef = useRef('')
     const myUserIdRef = useRef<string | undefined>(undefined)
     const directRoomCreationRef = useRef<string | null>(null)
+    const directRoomSelectionGenerationRef = useRef(0)
     const messageLayoutRef = useRef<HTMLDivElement | null>(null)
     const messageScrollRef = useRef<HTMLDivElement | null>(null)
-    const bottomRef = useRef<HTMLDivElement | null>(null)
     const historyCursorRef = useRef<string | null>(null)
     const isLoadingOlderMessagesRef = useRef(false)
     const localTypingRef = useRef<{ roomId: string } | null>(null)
@@ -217,8 +229,18 @@ const MessagePage: React.FC = () => {
     const localSendTimestampsRef = useRef<number[]>([])
     const pendingSendDraftsRef = useRef<PendingSendDraft[]>([])
     const rejectedSendDraftsRef = useRef<Record<string, string[]>>({})
+    const standaloneRoomListRequestedRef = useRef(false)
 
     const selectRoom = (room: ChatRoomSummary | null) => {
+        if (room) standaloneRoomListRequestedRef.current = false
+        const roomChanged = selectedRoomRef.current?.roomId !== room?.roomId
+        if (roomChanged) {
+            historyCursorRef.current = null
+            isLoadingOlderMessagesRef.current = false
+            setMessages([])
+            setHistoryLoading(!!room)
+            setOlderMessagesLoading(false)
+        }
         selectedRoomRef.current = room
         setSelectedRoom(room)
     }
@@ -496,21 +518,37 @@ const MessagePage: React.FC = () => {
     }, [rooms, keyword, myProfileQuery.data?.userId])
 
     useEffect(() => {
+        if (standalone && standaloneRoomListRequestedRef.current) {
+            setDirectRoomCreating(false)
+            return
+        }
+
         const myUserId = myProfileQuery.data?.userId
         const targetUserId = targetUserQuery.data?.userId
-        if (!myUserId || !targetUserId || targetUserId === myUserId) return
+        if (!myUserId || !targetUserId || targetUserId === myUserId) {
+            setDirectRoomCreating(false)
+            return
+        }
 
         const existingRoom = rooms.find((room) => isDirectRoomWithUser(room, myUserId, targetUserId))
         if (existingRoom) {
+            setDirectRoomCreating(false)
             if (selectedRoom?.roomId !== existingRoom.roomId) selectRoom(existingRoom)
             return
         }
         if (directRoomCreationRef.current === targetUserId) return
 
         directRoomCreationRef.current = targetUserId
+        const selectionGeneration = directRoomSelectionGenerationRef.current
+        setDirectRoomCreating(true)
         void createChatRoom({ memberUserIds: [targetUserId] })
             .then(async (room) => {
-                selectRoom(room)
+                if (
+                    directRoomSelectionGenerationRef.current === selectionGeneration &&
+                    (!standalone || !standaloneRoomListRequestedRef.current)
+                ) {
+                    selectRoom(room)
+                }
                 await roomsQuery.refetch()
             })
             .catch((error) => {
@@ -521,8 +559,9 @@ const MessagePage: React.FC = () => {
             })
             .finally(() => {
                 directRoomCreationRef.current = null
+                setDirectRoomCreating(false)
             })
-    }, [myProfileQuery.data?.userId, rooms, roomsQuery, selectedRoom?.roomId, targetUserQuery.data?.userId])
+    }, [myProfileQuery.data?.userId, rooms, roomsQuery, selectedRoom?.roomId, standalone, targetUserQuery.data?.userId])
 
     useEffect(() => {
         // Only auto-pick the first room when nothing is selected yet. If a room IS selected
@@ -531,7 +570,9 @@ const MessagePage: React.FC = () => {
         // otherwise a freshly created/selected room gets clobbered by a stale list on the next render.
         // Explicit removal (e.g. leaving a room) clears selectedRoom itself, so this doesn't need to.
         if (selectedRoom === null) {
-            selectRoom(rooms[0] ?? null)
+            if (!standalone || !standaloneRoomListRequestedRef.current) {
+                selectRoom(rooms[0] ?? null)
+            }
             return
         }
 
@@ -539,7 +580,7 @@ const MessagePage: React.FC = () => {
         if (refreshedSelectedRoom && refreshedSelectedRoom !== selectedRoom) {
             selectRoom(refreshedSelectedRoom)
         }
-    }, [rooms, selectedRoom])
+    }, [rooms, selectedRoom, standalone])
 
     useEffect(() => {
         let closed = false
@@ -708,11 +749,13 @@ const MessagePage: React.FC = () => {
         if (!selectedRoom) {
             historyCursorRef.current = null
             setMessages([])
+            setHistoryLoading(false)
             return
         }
         let mounted = true
         historyCursorRef.current = null
         setMessages([])
+        setHistoryLoading(true)
 
         const loadHistory = async () => {
             if (!selectedRoom.roomId) return
@@ -725,6 +768,8 @@ const MessagePage: React.FC = () => {
             } catch (error) {
                 console.error('[chat] 이력 조회 실패', error)
                 if (mounted) setChatError('메시지를 불러오지 못했어요.')
+            } finally {
+                if (mounted) setHistoryLoading(false)
             }
         }
 
@@ -740,6 +785,7 @@ const MessagePage: React.FC = () => {
         if (!room || !beforeMessageId || isLoadingOlderMessagesRef.current) return
 
         isLoadingOlderMessagesRef.current = true
+        setOlderMessagesLoading(true)
         const scrollContainer = messageScrollRef.current
         const previousScrollHeight = scrollContainer?.scrollHeight ?? 0
         const previousScrollTop = scrollContainer?.scrollTop ?? 0
@@ -763,6 +809,7 @@ const MessagePage: React.FC = () => {
             setChatError('이전 메시지를 불러오지 못했어요.')
         } finally {
             isLoadingOlderMessagesRef.current = false
+            setOlderMessagesLoading(false)
         }
     }
 
@@ -773,7 +820,13 @@ const MessagePage: React.FC = () => {
     }
 
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+        const messageScroll = messageScrollRef.current
+        if (!messageScroll) return
+
+        messageScroll.scrollTo({
+            top: messageScroll.scrollHeight,
+            behavior: 'smooth',
+        })
     }, [messages[messages.length - 1]?.id])
 
     const handleSend = () => {
@@ -989,11 +1042,13 @@ const MessagePage: React.FC = () => {
             .map((member) => member.username)
         : []
     const partnerIsTyping = typingMemberNames.length > 0
+    const roomListLoading = roomsQuery.isLoading || myProfileQuery.isLoading
+    const conversationBootstrapping = roomListLoading || (!!targetUsername && targetUserQuery.isLoading)
 
     return (
         <div
             ref={messageLayoutRef}
-            className={`flex h-[calc(100dvh-64px-80px-env(safe-area-inset-bottom))] w-full min-w-0 lg:h-[calc(100vh-64px)] ${isRoomListResizing ? 'select-none cursor-col-resize' : ''}`}
+            className={`flex w-full min-w-0 ${standalone ? 'h-full' : 'h-[calc(100dvh-64px-80px-env(safe-area-inset-bottom))] lg:h-[calc(100vh-64px)]'} ${isRoomListResizing ? 'select-none cursor-col-resize' : ''}`}
         >
             <div
                 className={`${selectedRoom ? 'hidden md:flex' : 'flex'} w-full shrink-0 flex-col border-r border-line bg-panel md:w-[var(--room-list-width)]`}
@@ -1025,43 +1080,47 @@ const MessagePage: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto">
-                    {filteredRooms.map((room) => {
-                        const active = selectedRoom?.roomId === room.roomId
-                        const avatarMember = getRoomAvatarMember(room, myProfileQuery.data?.userId)
-                        const displayName = getRoomDisplayName(room, myProfileQuery.data?.userId)
-                        return (
-                            <button
-                                key={room.roomId}
-                                className={`w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-surface transition-colors ${
-                                    active ? 'bg-surface' : ''
-                                }`}
-                                onClick={() => selectRoom(room)}
-                                onContextMenu={(event) => {
-                                    event.preventDefault()
-                                    setRoomContextMenu({
-                                        room,
-                                        x: Math.min(event.clientX, window.innerWidth - 176),
-                                        y: Math.min(event.clientY, window.innerHeight - 60),
-                                    })
-                                }}
-                            >
-                                <ChatAvatar
-                                    imageKey={avatarMember?.profileImageUrl}
-                                    alt={`${displayName} 프로필`}
-                                    className="h-11 w-11 shrink-0"
-                                />
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm font-bold text-ink truncate">{displayName}</span>
-                                        <span className="text-xs text-muted shrink-0 ml-2">{formatRelative(room.lastMessageAt)}</span>
+                    {roomListLoading ? (
+                        <ChatRoomListSkeleton />
+                    ) : (
+                        filteredRooms.map((room) => {
+                            const active = selectedRoom?.roomId === room.roomId
+                            const avatarMember = getRoomAvatarMember(room, myProfileQuery.data?.userId)
+                            const displayName = getRoomDisplayName(room, myProfileQuery.data?.userId)
+                            return (
+                                <button
+                                    key={room.roomId}
+                                    className={`w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-surface transition-colors ${
+                                        active ? 'bg-surface' : ''
+                                    }`}
+                                    onClick={() => selectRoom(room)}
+                                    onContextMenu={(event) => {
+                                        event.preventDefault()
+                                        setRoomContextMenu({
+                                            room,
+                                            x: Math.min(event.clientX, window.innerWidth - 176),
+                                            y: Math.min(event.clientY, window.innerHeight - 60),
+                                        })
+                                    }}
+                                >
+                                    <ChatAvatar
+                                        imageKey={avatarMember?.profileImageUrl}
+                                        alt={`${displayName} 프로필`}
+                                        className="h-11 w-11 shrink-0"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm font-bold text-ink truncate">{displayName}</span>
+                                            <span className="text-xs text-muted shrink-0 ml-2">{formatRelative(room.lastMessageAt)}</span>
+                                        </div>
+                                        <div className="mt-0.5">
+                                            <span className="text-sm text-sub truncate block">{roomPreviews[room.roomId] || '대화를 시작해보세요.'}</span>
+                                        </div>
                                     </div>
-                                    <div className="mt-0.5">
-                                        <span className="text-sm text-sub truncate block">{roomPreviews[room.roomId] || '대화를 시작해보세요.'}</span>
-                                    </div>
-                                </div>
-                            </button>
-                        )
-                    })}
+                                </button>
+                            )
+                        })
+                    )}
                 </div>
             </div>
 
@@ -1084,23 +1143,49 @@ const MessagePage: React.FC = () => {
                         <button
                             type="button"
                             className="flex h-11 w-11 items-center justify-center rounded-xl text-sub hover:bg-surface md:hidden"
-                            onClick={() => selectRoom(null)}
+                            onClick={() => {
+                                directRoomSelectionGenerationRef.current += 1
+                                standaloneRoomListRequestedRef.current = true
+                                if (targetUsername) {
+                                    const nextSearchParams = new URLSearchParams(searchParams)
+                                    nextSearchParams.delete('user')
+                                    setSearchParams(nextSearchParams, { replace: true })
+                                }
+                                selectRoom(null)
+                            }}
                             aria-label="대화 목록으로 돌아가기"
                         >
                             <ChevronLeftIcon size={22} />
                         </button>
-                        <ChatAvatar
-                            imageKey={selectedRoom ? getRoomAvatarMember(selectedRoom, myUserId)?.profileImageUrl : undefined}
-                            alt={selectedRoom ? `${getRoomDisplayName(selectedRoom, myUserId)} 프로필` : ''}
-                            className="h-9 w-9 shrink-0"
-                        />
-                        <div>
-                            <div className="text-sm font-bold text-ink">{selectedRoom ? getRoomDisplayName(selectedRoom, myUserId) : '대화 상대를 선택하세요'}</div>
-                            <div className={`text-xs flex items-center gap-1 ${partnerIsTyping ? 'text-sub' : 'text-success'}`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${partnerIsTyping ? 'bg-sub animate-pulse' : 'bg-success'}`} />
-                                {partnerIsTyping ? `${typingMemberNames.join(', ')} 입력 중` : `${selectedRoom?.members.length ?? 0}명 참여 중`}
+                        {conversationBootstrapping && !selectedRoom ? (
+                            <div
+                                className="flex animate-pulse items-center gap-3"
+                                role="status"
+                                aria-label="대화 정보를 불러오는 중"
+                                aria-busy="true"
+                            >
+                                <span className="h-9 w-9 shrink-0 rounded-full bg-placeholder" aria-hidden="true" />
+                                <div className="space-y-2" aria-hidden="true">
+                                    <span className="block h-4 w-28 rounded bg-placeholder" />
+                                    <span className="block h-3 w-20 rounded bg-placeholder" />
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <>
+                                <ChatAvatar
+                                    imageKey={selectedRoom ? getRoomAvatarMember(selectedRoom, myUserId)?.profileImageUrl : undefined}
+                                    alt={selectedRoom ? `${getRoomDisplayName(selectedRoom, myUserId)} 프로필` : ''}
+                                    className="h-9 w-9 shrink-0"
+                                />
+                                <div>
+                                    <div className="text-sm font-bold text-ink">{selectedRoom ? getRoomDisplayName(selectedRoom, myUserId) : '대화 상대를 선택하세요'}</div>
+                                    <div className={`text-xs flex items-center gap-1 ${partnerIsTyping ? 'text-sub' : 'text-success'}`}>
+                                        <span className={`w-1.5 h-1.5 rounded-full ${partnerIsTyping ? 'bg-sub animate-pulse' : 'bg-success'}`} />
+                                        {partnerIsTyping ? `${typingMemberNames.join(', ')} 입력 중` : `${selectedRoom?.members.length ?? 0}명 참여 중`}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </div>
                     {selectedRoom && (
                         <div className="flex items-center gap-1">
@@ -1127,29 +1212,48 @@ const MessagePage: React.FC = () => {
                 </div>
 
                 {!selectedRoom ? (
-                    <div className="flex-1 min-w-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-                        {rooms.length === 0 ? (
-                            <>
-                                <p className="text-sm text-sub">아직 대화가 없어요.</p>
-                                <button
-                                    type="button"
-                                    className="min-h-11 rounded-xl bg-brand px-4 text-sm font-bold text-on-brand hover:brightness-95"
-                                    onClick={() => setIsCreateRoomOpen(true)}
-                                >
-                                    새 대화 시작하기
-                                </button>
-                            </>
-                        ) : (
-                            <p className="text-sm text-sub">대화를 선택해주세요.</p>
-                        )}
-                    </div>
+                    conversationBootstrapping ? (
+                        <div className="flex-1 min-w-0 overflow-hidden px-4 py-5 sm:px-6">
+                            <ChatMessageListSkeleton />
+                        </div>
+                    ) : directRoomCreating ? (
+                        <div
+                            className="flex flex-1 min-w-0 items-center justify-center px-6 text-center text-sm text-sub"
+                            role="status"
+                            aria-live="polite"
+                        >
+                            대화방을 만드는 중입니다.
+                        </div>
+                    ) : (
+                        <div className="flex-1 min-w-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+                            {rooms.length === 0 ? (
+                                <>
+                                    <p className="text-sm text-sub">아직 대화가 없어요.</p>
+                                    <button
+                                        type="button"
+                                        className="min-h-11 rounded-xl bg-brand px-4 text-sm font-bold text-on-brand hover:brightness-95"
+                                        onClick={() => setIsCreateRoomOpen(true)}
+                                    >
+                                        새 대화 시작하기
+                                    </button>
+                                </>
+                            ) : (
+                                <p className="text-sm text-sub">대화를 선택해주세요.</p>
+                            )}
+                        </div>
+                    )
                 ) : (
                 <div
                     ref={messageScrollRef}
                     className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 py-5 space-y-3"
                     onScroll={handleMessageScroll}
                 >
-                    {messages.map((message, index) => {
+                    {historyLoading ? (
+                        <ChatMessageListSkeleton />
+                    ) : (
+                        <>
+                            {olderMessagesLoading && <ChatMessageListSkeleton count={2} />}
+                            {messages.map((message, index) => {
                         const mine =
                             message.senderUserId === myUserId ||
                             message.senderUsername === myUsername
@@ -1198,16 +1302,17 @@ const MessagePage: React.FC = () => {
                                 )}
                             </div>
                         )
-                    })}
-                    {partnerIsTyping && (
-                        <div className="flex justify-start" role="status" aria-live="polite">
-                            <div className="inline-flex items-center gap-1.5 rounded-2xl rounded-tl-sm bg-surface px-4 py-2.5 text-xs text-sub">
-                                <span className="w-1.5 h-1.5 rounded-full bg-sub animate-pulse" />
-                                {typingMemberNames.join(', ')} 입력 중이에요
-                            </div>
-                        </div>
+                            })}
+                            {partnerIsTyping && (
+                                <div className="flex justify-start" role="status" aria-live="polite">
+                                    <div className="inline-flex items-center gap-1.5 rounded-2xl rounded-tl-sm bg-surface px-4 py-2.5 text-xs text-sub">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-sub animate-pulse" />
+                                        {typingMemberNames.join(', ')} 입력 중이에요
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
-                    <div ref={bottomRef} />
                 </div>
                 )}
 
@@ -1283,7 +1388,9 @@ const MessagePage: React.FC = () => {
                                 if (event.key === 'Escape') setIsCreateRoomOpen(false)
                             }}
                         />
-                        {inviteSuggestions.length > 0 && (
+                        {myFriendsQuery.isLoading ? (
+                            <ChatFriendListSkeleton />
+                        ) : inviteSuggestions.length > 0 ? (
                             <div className="mt-2 max-h-44 overflow-y-auto rounded-md border border-line bg-panel">
                                 {inviteSuggestions.map((item) => (
                                     <button
@@ -1302,7 +1409,7 @@ const MessagePage: React.FC = () => {
                                     </button>
                                 ))}
                             </div>
-                        )}
+                        ) : null}
                         <p className="mt-2 text-xs text-sub">친구인 사용자만 초대할 수 있어요.</p>
                         <div className="mt-4 flex justify-end gap-2">
                             <button
@@ -1341,7 +1448,9 @@ const MessagePage: React.FC = () => {
                                 if (event.key === 'Escape') setIsAddMemberOpen(false)
                             }}
                         />
-                        {addMemberSuggestions.length > 0 && (
+                        {myFriendsQuery.isLoading ? (
+                            <ChatFriendListSkeleton />
+                        ) : addMemberSuggestions.length > 0 ? (
                             <div className="mt-2 max-h-44 overflow-y-auto rounded-md border border-line bg-panel">
                                 {addMemberSuggestions.map((item) => (
                                     <button
@@ -1360,7 +1469,7 @@ const MessagePage: React.FC = () => {
                                     </button>
                                 ))}
                             </div>
-                        )}
+                        ) : null}
                         <p className="mt-2 text-xs text-sub">친구인 사용자만 초대할 수 있어요.</p>
                         <div className="mt-4 flex justify-end gap-2">
                             <button
