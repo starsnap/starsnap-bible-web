@@ -1510,7 +1510,7 @@ const SnapDetailPage: React.FC = () => {
                     <hr className="my-4 border-line" />
                     <section aria-labelledby="related-snaps-title">
                         <p id="related-snaps-title" className="text-sm font-bold text-ink">
-                            비슷한 얼굴의 스냅
+                            유사한 스냅
                         </p>
                         <div className="mt-3">
                             {relatedSnapsQuery.isError ? (
@@ -1540,7 +1540,7 @@ const SnapDetailPage: React.FC = () => {
                                 />
                             ) : (
                                 <div className="rounded-xl border border-dashed border-line bg-surface px-4 py-5 text-center text-xs text-muted">
-                                    비슷한 얼굴이 담긴 다른 스냅이 없습니다.
+                                    유사한 스냅이 없습니다.
                                 </div>
                             )}
                         </div>
