@@ -34,7 +34,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  IMAGE_REPOSITORY: ghcr.io/starsnap/starsnap-sns-web
+  IMAGE_REPOSITORY: ghcr.io/starsnap/starsnap-sns-web-runtime
 
 jobs:
   quality:
@@ -143,8 +143,8 @@ jobs:
       packages: read
     env:
       DOCKER_CONFIG: /tmp/starsnap-sns-web-${{ github.run_id }}-${{ github.run_attempt }}
-      STARSNAP_DEPLOY_IMAGE: ghcr.io/starsnap/starsnap-sns-web@${{ needs.publish.outputs.digest }}
-      STARSNAP_PULL_IMAGE: ghcr.io/starsnap/starsnap-sns-web:sha-${{ github.sha }}
+      STARSNAP_DEPLOY_IMAGE: ghcr.io/starsnap/starsnap-sns-web-runtime@${{ needs.publish.outputs.digest }}
+      STARSNAP_PULL_IMAGE: ghcr.io/starsnap/starsnap-sns-web-runtime:sha-${{ github.sha }}
       STARSNAP_DEPLOY_LOCK_PATH: /runner-state/starsnap-production-deploy.lock
     steps:
       - name: Check out deployment files

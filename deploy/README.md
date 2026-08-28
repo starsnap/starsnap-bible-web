@@ -19,9 +19,9 @@ The organization runner group must allow this repository and the exact
 `.github/workflows/container.yml` path pinned to the protected default branch.
 Never enable the production runner for pull-request or fork-triggered jobs.
 
-Before the first run, the GHCR package must be linked to this repository (or
-explicitly grant it Actions access) so the repository-scoped `GITHUB_TOKEN` can
-publish and read the image. Treat a missing package/repository link as a failed
+The first publish creates the repository-specific runtime package and links it
+through the OCI source label. Verify that link before enabling deployment. If a
+package already exists, treat a missing package/repository link as a failed
 pre-deploy gate; do not replace it with a cross-repository personal token.
 
 Keep the repository variable `SWARM_DEPLOY_ENABLED` unset until the protected
