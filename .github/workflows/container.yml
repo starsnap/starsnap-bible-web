@@ -68,6 +68,15 @@ jobs:
           bash:5.2@sha256:3bee76a96d86d5d2d5efc7c1c570e5a7c95db22348a26944e0e546fa174e3324
           bash /repo/deploy/test-deploy-production.sh /repo
 
+      - name: Validate recovery manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          set -a
+          source deploy/stack.env.example
+          set +a
+          docker stack config --compose-file deploy/stack.yml >/dev/null
+
   publish:
     needs: quality
     runs-on: ubuntu-latest
@@ -119,7 +128,8 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' &&
       inputs.deploy &&
-      github.ref == 'refs/heads/main'
+      github.ref == 'refs/heads/main' &&
+      vars.SWARM_DEPLOY_ENABLED == 'true'
     runs-on:
       group: starsnap-production
       labels: starsnap-swarm

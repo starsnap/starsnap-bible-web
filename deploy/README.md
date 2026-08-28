@@ -18,3 +18,20 @@ The production job:
 The organization runner group must allow this repository and the exact
 `.github/workflows/container.yml` path pinned to the protected default branch.
 Never enable the production runner for pull-request or fork-triggered jobs.
+
+Before the first run, the GHCR package must be linked to this repository (or
+explicitly grant it Actions access) so the repository-scoped `GITHUB_TOKEN` can
+publish and read the image. Treat a missing package/repository link as a failed
+pre-deploy gate; do not replace it with a cross-repository personal token.
+
+Keep the repository variable `SWARM_DEPLOY_ENABLED` unset until the protected
+environment, package access, and runner workflow allowlist are all verified.
+Set it to `true` last. Without that exact value the deploy job is skipped.
+
+The YAML manifests under `deploy/` are the recovery/bootstrap source of truth
+for this repository's service and direct data dependencies. The normal workflow
+does not run `docker stack deploy`; it updates only the existing service. If a
+manifest must be used for recovery, use the documented existing stack name and
+never pass `--prune`, so a repository cannot remove a sibling service.
+
+Recovery stack name: `starsnap-sns` (`deploy/stack.yml`).
