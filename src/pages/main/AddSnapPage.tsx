@@ -259,6 +259,8 @@ const AddSnapPage: React.FC = () => {
 
             <input
                 ref={fileInputRef}
+                id="snap-photo-input"
+                name="snapPhotos"
                 type="file"
                 accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
                 multiple
@@ -311,7 +313,7 @@ const AddSnapPage: React.FC = () => {
                                 key={img.preview}
                                 className="relative w-[88px] h-[88px] rounded-xl bg-placeholder overflow-hidden"
                             >
-                                <img src={img.preview} alt="" className="w-full h-full object-cover" />
+                                <img src={img.preview} alt="" width={88} height={88} className="w-full h-full object-cover" />
                                 <button
                                     type="button"
                                     onClick={() => removeImage(i)}
@@ -329,6 +331,7 @@ const AddSnapPage: React.FC = () => {
                                 type="button"
                                 onClick={openFilePicker}
                                 className="w-[88px] h-[88px] rounded-xl border-2 border-dashed border-line flex items-center justify-center text-muted hover:bg-surface"
+                                aria-label="이미지 추가"
                             >
                                 <PlusIcon size={22} />
                             </button>
@@ -338,8 +341,11 @@ const AddSnapPage: React.FC = () => {
 
                 {/* Form */}
                 <div className="rounded-2xl border border-line bg-panel p-6">
-                    <label className={fieldLabel}>제목</label>
+                    <label className={fieldLabel} htmlFor="snap-title">제목</label>
                     <input
+                        id="snap-title"
+                        name="title"
+                        autoComplete="off"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         placeholder="스냅 제목을 입력하세요"
@@ -347,18 +353,21 @@ const AddSnapPage: React.FC = () => {
                     />
 
                     <div className="mt-5">
-                        <label className={fieldLabel}>설명</label>
+                        <label className={fieldLabel} htmlFor="snap-description">설명</label>
                         <textarea
+                            id="snap-description"
+                            name="description"
+                            autoComplete="off"
                             rows={4}
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            placeholder="스냅에 대한 설명을 입력하세요..."
+                            placeholder="예: 오늘의 공연 순간을 기록해 보세요…"
                             className="w-full rounded-lg border border-line bg-surface px-3.5 py-3 text-sm text-ink placeholder:text-muted resize-none focus:outline-none focus:ring-1 focus:ring-brand"
                         />
                     </div>
 
                     <div className="mt-5">
-                        <label className={fieldLabel}>태그</label>
+                        <label className={fieldLabel} htmlFor="snap-tag">태그</label>
                         <div className="flex flex-wrap gap-2">
                             {tags.map((tag) => (
                                 <span
@@ -379,6 +388,9 @@ const AddSnapPage: React.FC = () => {
                         </div>
                         <div className="mt-2 flex gap-2">
                             <input
+                                id="snap-tag"
+                                name="tag"
+                                autoComplete="off"
                                 value={tagInput}
                                 onChange={(e) => setTagInput(e.target.value)}
                                 onKeyDown={(e) => {
@@ -387,7 +399,7 @@ const AddSnapPage: React.FC = () => {
                                         addTag()
                                     }
                                 }}
-                                placeholder="태그 입력 후 Enter"
+                                placeholder="예: 콘서트 입력 후 Enter…"
                                 className={inputBase}
                             />
                             <button
@@ -423,6 +435,9 @@ const AddSnapPage: React.FC = () => {
                                                 <img
                                                     src={imageCandidates[0]}
                                                     alt={`${star.name} 프로필`}
+                                                    width={72}
+                                                    height={72}
+                                                    loading="lazy"
                                                     className="w-full h-full object-cover"
                                                     onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                                                 />
@@ -468,6 +483,9 @@ const AddSnapPage: React.FC = () => {
                                                 <img
                                                     src={imageCandidates[0]}
                                                     alt={`${group.name} 썸네일`}
+                                                    width={100}
+                                                    height={60}
+                                                    loading="lazy"
                                                     className="w-full h-full object-cover"
                                                     onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                                                 />
@@ -619,6 +637,9 @@ const AddSnapPage: React.FC = () => {
                                                     <img
                                                         src={imageCandidates[0]}
                                                         alt={`${star.name} 프로필`}
+                                                        width={56}
+                                                        height={56}
+                                                        loading="lazy"
                                                         className="block w-14 h-14 rounded-full object-cover mx-auto"
                                                         onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                                                     />
@@ -721,6 +742,9 @@ const AddSnapPage: React.FC = () => {
                                                     <img
                                                         src={imageCandidates[0]}
                                                         alt={`${group.name} 썸네일`}
+                                                        width={56}
+                                                        height={56}
+                                                        loading="lazy"
                                                         className="block w-14 h-14 rounded-xl object-cover mx-auto"
                                                         onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                                                     />

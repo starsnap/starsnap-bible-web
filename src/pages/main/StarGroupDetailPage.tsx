@@ -110,6 +110,8 @@ const StarGroupDetailPage: React.FC = () => {
                         <img
                             src={imageCandidates[0]}
                             alt={`${group.name} 프로필`}
+                            width={112}
+                            height={112}
                             className="w-28 h-28 rounded-full object-cover border-4 border-on-media/70 shrink-0"
                             onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                         />
@@ -157,6 +159,9 @@ const StarGroupDetailPage: React.FC = () => {
                                         <img
                                             src={memberImageCandidates[0]}
                                             alt={`${member.name} 프로필`}
+                                            width={64}
+                                            height={64}
+                                            loading="lazy"
                                             className="w-16 h-16 rounded-full object-cover border-2 border-line"
                                             onError={(e) => applyNextImageCandidate(e.currentTarget, memberImageCandidates)}
                                         />

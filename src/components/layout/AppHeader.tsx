@@ -1,5 +1,5 @@
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { SearchIcon, PlusIcon, BellIcon } from '../icons'
 import { getMyProfile, type UserProfileResponse } from '../../services/snapService'
@@ -13,7 +13,6 @@ const resolveProfileImageKey = (profile: UserProfileResponse | null): string | n
 }
 
 const AppHeader: React.FC = () => {
-    const navigate = useNavigate()
     const profileQuery = useQuery<UserProfileResponse>({
         queryKey: queryKeys.myProfile,
         queryFn: getMyProfile,
@@ -24,8 +23,8 @@ const AppHeader: React.FC = () => {
     return (
         <header className="fixed top-0 left-0 right-0 z-30 h-16 border-b border-line bg-[var(--ss-header-bg)] text-ink shadow-[var(--ss-shadow-sm)] backdrop-blur-xl">
             <div className="h-full flex items-center px-4 sm:px-6 lg:px-7 gap-2 sm:gap-4 lg:gap-6">
-                <button
-                    onClick={() => navigate('/')}
+                <Link
+                    to="/"
                     className="flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-1.5 shrink-0 hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                     aria-label="StarSnap home"
                 >
@@ -38,38 +37,38 @@ const AppHeader: React.FC = () => {
                         className="h-8 w-8 shrink-0 rounded-lg object-cover"
                     />
                     <span className="hidden text-xl font-semibold tracking-tight lg:inline">StarSnap</span>
-                </button>
+                </Link>
 
                 <div className="hidden flex-1 justify-center lg:flex">
-                    <div className="relative w-full max-w-[520px]">
+                    <Link
+                        to="/search"
+                        className="relative block h-11 w-full max-w-[520px] rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                        aria-label="스타, 유저, 스냅 검색"
+                    >
                         <SearchIcon
                             size={18}
                             className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
                         />
-                        <input
-                            className="h-11 w-full rounded-full border border-transparent bg-placeholder pl-11 pr-4 text-sm text-ink placeholder:text-muted hover:border-line focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/25"
-                            placeholder="스타, 유저, 스냅 검색"
-                            aria-label="스타, 유저, 스냅 검색"
-                            readOnly
-                            onFocus={() => navigate('/search')}
-                        />
-                    </div>
+                        <span className="flex h-11 w-full items-center rounded-full border border-transparent bg-placeholder pl-11 pr-4 text-sm text-muted hover:border-line">
+                            스타, 유저, 스냅 검색…
+                        </span>
+                    </Link>
                 </div>
 
                 <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
-                    <button
-                        onClick={() => navigate('/add')}
+                    <Link
+                        to="/add"
                         className="hidden min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full bg-brand px-4 text-sm font-bold text-on-brand shadow-sm hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand lg:flex"
                         aria-label="스냅 업로드"
                     >
                         <PlusIcon size={18} />
                         <span className="hidden lg:inline">업로드</span>
-                    </button>
+                    </Link>
                     <button className="flex h-11 w-11 items-center justify-center rounded-full text-sub hover:bg-placeholder hover:text-ink" aria-label="알림">
                         <BellIcon size={22} />
                     </button>
-                    <button
-                        onClick={() => navigate('/profile')}
+                    <Link
+                        to="/profile"
                         className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-placeholder"
                         aria-label="프로필"
                     >
@@ -78,12 +77,14 @@ const AppHeader: React.FC = () => {
                             <img
                                 src={profileImageCandidates[0]}
                                 alt="내 프로필"
+                                width={32}
+                                height={32}
                                 className="w-full h-full object-cover"
                                 onError={(e) => applyNextImageCandidate(e.currentTarget, profileImageCandidates)}
                             />
                             ) : null}
                         </span>
-                    </button>
+                    </Link>
                 </div>
             </div>
         </header>

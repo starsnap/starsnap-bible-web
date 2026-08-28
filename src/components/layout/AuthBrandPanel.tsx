@@ -41,7 +41,7 @@ const AuthBrandPanel: React.FC<Props> = ({ active = 0 }) => {
                     {[0, 1, 2].map((i) => (
                         <span
                             key={i}
-                            className={`h-1.5 rounded-full transition-all ${
+                            className={`h-1.5 rounded-full transition-[width] ${
                                 i === active ? 'w-5 bg-brand' : 'w-1.5 bg-on-media/25'
                             }`}
                         />

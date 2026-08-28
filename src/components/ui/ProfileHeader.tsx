@@ -27,6 +27,9 @@ const ProfileHeader: React.FC<Props> = ({ name, lines = [], stats = [], actions,
                     <img
                         src={imageCandidates[0]}
                         alt={`${name} 프로필`}
+                        width={112}
+                        height={112}
+                        loading="lazy"
                         className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-full object-cover shrink-0"
                         onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                     />

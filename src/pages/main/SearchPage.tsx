@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { SearchIcon } from '../../components/icons'
 import CategoryChips from '../../components/ui/CategoryChips'
@@ -58,6 +58,9 @@ const UserResultCard: React.FC<{ user: UserSearchItem; onClick: () => void }> = 
                     <img
                         src={imageCandidates[0]}
                         alt={`${user.username} 프로필`}
+                        width={56}
+                        height={56}
+                        loading="lazy"
                         className="w-14 h-14 rounded-full object-cover shrink-0"
                         onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                     />
@@ -82,6 +85,9 @@ const StarResultCard: React.FC<{ star: StarSearchItem; onClick: () => void }> = 
                     <img
                         src={imageCandidates[0]}
                         alt={`${star.name} 프로필`}
+                        width={56}
+                        height={56}
+                        loading="lazy"
                         className="w-14 h-14 rounded-full object-cover shrink-0"
                         onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                     />
@@ -111,6 +117,9 @@ const StarGroupResultCard: React.FC<{ group: StarGroupSearchItem; onClick: () =>
                     <img
                         src={imageCandidates[0]}
                         alt={`${group.name} 이미지`}
+                        width={56}
+                        height={56}
+                        loading="lazy"
                         className="w-14 h-14 rounded-full object-cover shrink-0"
                         onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                     />
@@ -125,9 +134,27 @@ const StarGroupResultCard: React.FC<{ group: StarGroupSearchItem; onClick: () =>
 
 const SearchPage: React.FC = () => {
     const navigate = useNavigate()
-    const [query, setQuery] = useState('')
+    const [searchParams, setSearchParams] = useSearchParams()
+    const requestedTab = searchParams.get('tab') as ExploreTab | null
+    const query = searchParams.get('q') ?? ''
+    const tab: ExploreTab = requestedTab && EXPLORE_TABS.includes(requestedTab) ? requestedTab : '전체'
     const [debouncedQuery, setDebouncedQuery] = useState('')
-    const [tab, setTab] = useState<ExploreTab>('전체')
+    const setQuery = useCallback((value: string) => {
+        setSearchParams((current) => {
+            const next = new URLSearchParams(current)
+            if (value.trim()) next.set('q', value)
+            else next.delete('q')
+            return next
+        }, { replace: true })
+    }, [setSearchParams])
+    const setTab = useCallback((value: ExploreTab) => {
+        setSearchParams((current) => {
+            const next = new URLSearchParams(current)
+            if (value === '전체') next.delete('tab')
+            else next.set('tab', value)
+            return next
+        }, { replace: true })
+    }, [setSearchParams])
 
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedQuery(query.trim()), 250)
@@ -263,10 +290,12 @@ const SearchPage: React.FC = () => {
                     <SearchIcon size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
                     <input
                         id="search-query"
+                        name="query"
+                        autoComplete="off"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         className="w-full h-12 rounded-full border border-line bg-panel pl-12 pr-4 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand"
-                        placeholder="스타, 유저, 스냅 검색"
+                        placeholder="예: 좋아하는 스타나 스냅을 검색해 보세요…"
                     />
                 </div>
 

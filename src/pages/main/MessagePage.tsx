@@ -8,7 +8,7 @@ import {
     ChatMessageListSkeleton,
     ChatRoomListSkeleton,
 } from '../../components/ui/ChatSkeletons'
-import { FiEdit2, FiLogOut, FiPlus, FiTrash2, FiUserPlus } from 'react-icons/fi'
+import { FiEdit2, FiLogOut, FiMoreVertical, FiPlus, FiTrash2, FiUserPlus } from 'react-icons/fi'
 import {
     getMyFriends,
     getMyProfile,
@@ -17,6 +17,7 @@ import {
     type UserProfileResponse,
 } from '../../services/snapService'
 import { applyNextImageCandidate, getImageCandidates } from '../../utils/s3Image'
+import { useAccessibleDialog } from '../../hooks/useAccessibleDialog'
 import {
     addChatRoomMembers,
     createChatRoom,
@@ -40,6 +41,7 @@ type MessageContextMenu = {
     message: ChatMessage
     x: number
     y: number
+    trigger: HTMLElement | null
 }
 
 type RoomContextMenu = {
@@ -110,6 +112,10 @@ const ChatAvatar: React.FC<ChatAvatarProps> = ({ imageKey, alt, className }) => 
                 <img
                     src={imageCandidates[0]}
                     alt={alt}
+                    width={48}
+                    height={48}
+                    loading="lazy"
+                    decoding="async"
                     className="h-full w-full object-cover"
                     onError={(event) => {
                         const image = event.currentTarget
@@ -191,6 +197,7 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
     const [rateLimitRemainingSeconds, setRateLimitRemainingSeconds] = useState(0)
     const [rateLimitMessage, setRateLimitMessage] = useState(DEFAULT_MESSAGE_RATE_LIMIT_MESSAGE)
     const [rateLimitAnnouncement, setRateLimitAnnouncement] = useState('')
+    const [messageAnnouncement, setMessageAnnouncement] = useState('')
     const [typingUsers, setTypingUsers] = useState<Record<string, true>>({})
     const [contextMenu, setContextMenu] = useState<MessageContextMenu | null>(null)
     const [roomContextMenu, setRoomContextMenu] = useState<RoomContextMenu | null>(null)
@@ -220,8 +227,11 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
     const directRoomSelectionGenerationRef = useRef(0)
     const messageLayoutRef = useRef<HTMLDivElement | null>(null)
     const messageScrollRef = useRef<HTMLDivElement | null>(null)
+    const conversationSearchRef = useRef<HTMLInputElement | null>(null)
+    const contextMenuRef = useRef<HTMLDivElement | null>(null)
     const historyCursorRef = useRef<string | null>(null)
     const isLoadingOlderMessagesRef = useRef(false)
+    const shouldAutoScrollRef = useRef(true)
     const localTypingRef = useRef<{ roomId: string } | null>(null)
     const typingStopTimerRef = useRef<number | null>(null)
     const remoteTypingTimersRef = useRef<Record<string, number>>({})
@@ -230,11 +240,64 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
     const pendingSendDraftsRef = useRef<PendingSendDraft[]>([])
     const rejectedSendDraftsRef = useRef<Record<string, string[]>>({})
     const standaloneRoomListRequestedRef = useRef(false)
+    const createRoomDialogRef = useAccessibleDialog(isCreateRoomOpen, () => setIsCreateRoomOpen(false))
+    const addMemberDialogRef = useAccessibleDialog(isAddMemberOpen, () => setIsAddMemberOpen(false))
+    const leaveRoomDialogRef = useAccessibleDialog(!!leaveRoomTarget, () => setLeaveRoomTarget(null))
+    const editMessageDialogRef = useAccessibleDialog(!!editingMessage, () => setEditingMessage(null))
+    const deleteMessageDialogRef = useAccessibleDialog(!!deleteTarget, () => setDeleteTarget(null))
+
+    const openMessageMenu = (
+        message: ChatMessage,
+        trigger: HTMLElement,
+        coordinates?: { x: number; y: number },
+    ) => {
+        const rect = trigger.getBoundingClientRect()
+        const x = coordinates?.x ?? rect.right - 160
+        const y = coordinates?.y ?? rect.bottom + 4
+        setContextMenu({
+            message,
+            trigger,
+            x: Math.max(8, Math.min(x, window.innerWidth - 168)),
+            y: Math.max(8, Math.min(y, window.innerHeight - 112)),
+        })
+    }
+
+    const handleMessageMenuKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        const menu = contextMenuRef.current
+        if (!menu) return
+        const items = Array.from(menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'))
+        const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement)
+
+        if (event.key === 'Escape') {
+            event.preventDefault()
+            const trigger = contextMenu?.trigger
+            setContextMenu(null)
+            window.requestAnimationFrame(() => trigger?.focus({ preventScroll: true }))
+            return
+        }
+        let nextIndex = currentIndex
+        if (event.key === 'ArrowDown') nextIndex = (currentIndex + 1 + items.length) % items.length
+        else if (event.key === 'ArrowUp') nextIndex = (currentIndex - 1 + items.length) % items.length
+        else if (event.key === 'Home') nextIndex = 0
+        else if (event.key === 'End') nextIndex = items.length - 1
+        else return
+
+        event.preventDefault()
+        items[nextIndex]?.focus()
+    }
+
+    const handleMessageMenuBlur = (event: React.FocusEvent<HTMLDivElement>) => {
+        const nextTarget = event.relatedTarget
+        if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget)) {
+            setContextMenu(null)
+        }
+    }
 
     const selectRoom = (room: ChatRoomSummary | null) => {
         if (room) standaloneRoomListRequestedRef.current = false
         const roomChanged = selectedRoomRef.current?.roomId !== room?.roomId
         if (roomChanged) {
+            shouldAutoScrollRef.current = true
             historyCursorRef.current = null
             isLoadingOlderMessagesRef.current = false
             setMessages([])
@@ -689,6 +752,12 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
                         if (exists) return prev
                         return [...prev, message]
                     })
+                    if (message.senderUserId !== myUserIdRef.current) {
+                        const preview = message.content.length > 120
+                            ? `${message.content.slice(0, 120)}…`
+                            : message.content
+                        setMessageAnnouncement(`${message.senderUsername}님의 새 메시지: ${preview}`)
+                    }
                     void roomsRefetchRef.current()
                 } catch {
                     // ignore malformed event
@@ -725,10 +794,14 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
 
     useEffect(() => {
         if (!contextMenu) return
+        const focusFrame = window.requestAnimationFrame(() => {
+            contextMenuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus({ preventScroll: true })
+        })
         const closeMenu = () => setContextMenu(null)
         window.addEventListener('pointerdown', closeMenu)
         window.addEventListener('blur', closeMenu)
         return () => {
+            window.cancelAnimationFrame(focusFrame)
             window.removeEventListener('pointerdown', closeMenu)
             window.removeEventListener('blur', closeMenu)
         }
@@ -814,18 +887,21 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
     }
 
     const handleMessageScroll = (event: React.UIEvent<HTMLDivElement>) => {
-        if (event.currentTarget.scrollTop <= 24) {
+        const target = event.currentTarget
+        const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight
+        shouldAutoScrollRef.current = distanceFromBottom <= 96
+        if (target.scrollTop <= 24) {
             void loadOlderMessages()
         }
     }
 
     useEffect(() => {
         const messageScroll = messageScrollRef.current
-        if (!messageScroll) return
+        if (!messageScroll || !shouldAutoScrollRef.current) return
 
         messageScroll.scrollTo({
             top: messageScroll.scrollHeight,
-            behavior: 'smooth',
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
         })
     }, [messages[messages.length - 1]?.id])
 
@@ -836,6 +912,8 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
             setChatError('사용자 정보를 불러오는 중이에요. 잠시 후 다시 보내주세요.')
             return
         }
+
+        shouldAutoScrollRef.current = true
 
         stopTyping()
         setChatError(null)
@@ -1034,6 +1112,13 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
         setIsRoomListResizing(false)
     }
 
+    const handleRoomListResizeKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        const delta = event.key === 'ArrowLeft' ? -16 : event.key === 'ArrowRight' ? 16 : 0
+        if (!delta) return
+        event.preventDefault()
+        setRoomListWidth((current) => Math.min(MAX_ROOM_LIST_WIDTH, Math.max(MIN_ROOM_LIST_WIDTH, current + delta)))
+    }
+
     const myUserId = myProfileQuery.data?.userId
     const myUsername = myProfileQuery.data?.username
     const typingMemberNames = selectedRoom
@@ -1071,9 +1156,12 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
                         <label htmlFor="conversation-search" className="sr-only">대화 검색</label>
                         <SearchIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
                         <input
+                            ref={conversationSearchRef}
                             id="conversation-search"
+                            name="conversationSearch"
+                            autoComplete="off"
                             className="conversation-search-input h-11 w-full rounded-lg bg-surface pl-10 pr-3 text-sm text-ink placeholder:text-muted"
-                            placeholder="대화 검색"
+                            placeholder="예: 대화방 또는 사용자 검색…"
                             value={keyword}
                             onChange={(e) => setKeyword(e.target.value)}
                         />
@@ -1082,6 +1170,24 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
                 <div className="flex-1 overflow-y-auto">
                     {roomListLoading ? (
                         <ChatRoomListSkeleton />
+                    ) : filteredRooms.length === 0 ? (
+                        <div className="flex min-h-40 flex-col items-center justify-center gap-3 px-6 text-center" role="status">
+                            <p className="text-sm text-sub">
+                                {keyword.trim() ? '일치하는 대화가 없어요.' : '아직 대화가 없어요.'}
+                            </p>
+                            {keyword.trim() && (
+                                <button
+                                    type="button"
+                                    className="min-h-11 rounded-xl border border-line px-4 text-sm font-semibold text-ink hover:bg-surface"
+                                    onClick={() => {
+                                        setKeyword('')
+                                        window.requestAnimationFrame(() => conversationSearchRef.current?.focus())
+                                    }}
+                                >
+                                    검색 초기화
+                                </button>
+                            )}
+                        </div>
                     ) : (
                         filteredRooms.map((room) => {
                             const active = selectedRoom?.roomId === room.roomId
@@ -1128,11 +1234,16 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
                 role="separator"
                 aria-orientation="vertical"
                 aria-label="채팅방 목록 너비 조절"
+                aria-valuemin={MIN_ROOM_LIST_WIDTH}
+                aria-valuemax={MAX_ROOM_LIST_WIDTH}
+                aria-valuenow={roomListWidth}
+                tabIndex={0}
                 className="relative z-10 -ml-1 hidden w-2 shrink-0 cursor-col-resize touch-none items-center justify-center group md:flex"
                 onPointerDown={handleRoomListResizeStart}
                 onPointerMove={handleRoomListResize}
                 onPointerUp={handleRoomListResizeEnd}
                 onPointerCancel={handleRoomListResizeEnd}
+                onKeyDown={handleRoomListResizeKeyDown}
             >
                 <span className="h-10 w-1 rounded-full bg-transparent transition-colors group-hover:bg-brand/70" />
             </div>
@@ -1245,13 +1356,14 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
                 ) : (
                 <div
                     ref={messageScrollRef}
-                    className="flex-1 min-w-0 overflow-y-auto px-4 sm:px-6 py-5 space-y-3"
+                    className="flex-1 min-w-0 overflow-y-auto px-4 py-5 sm:px-6"
                     onScroll={handleMessageScroll}
                 >
-                    {historyLoading ? (
-                        <ChatMessageListSkeleton />
-                    ) : (
-                        <>
+                    <div className="mx-auto w-full max-w-5xl space-y-3">
+                        {historyLoading ? (
+                            <ChatMessageListSkeleton />
+                        ) : (
+                            <>
                             {olderMessagesLoading && <ChatMessageListSkeleton count={2} />}
                             {messages.map((message, index) => {
                         const mine =
@@ -1266,13 +1378,13 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
                             previousMessage.senderUserId !== message.senderUserId ||
                             formatMessageTime(previousMessage.createdAt) !== formatMessageTime(message.createdAt)
                         return (
-                            <div key={message.id} className={`flex items-end gap-1.5 ${mine ? 'justify-end' : 'justify-start'}`}>
-                                <div className="max-w-[78%] sm:max-w-[60%]">
+                            <div key={message.id} className={`chat-message-item group flex items-end gap-1.5 ${mine ? 'justify-end' : 'justify-start'}`}>
+                                <div className="min-w-0 max-w-[70%] sm:max-w-[60%]">
                                     {showSenderName && (
                                         <div className="mb-1 px-1 text-xs font-medium text-sub">{message.senderUsername}</div>
                                     )}
                                     <div
-                                        className={`px-4 py-2.5 text-sm leading-relaxed ${
+                                        className={`break-words px-4 py-2.5 text-sm leading-relaxed [overflow-wrap:anywhere] ${
                                             mine
                                                 ? 'bg-brand text-on-brand rounded-2xl rounded-tr-sm'
                                                 : 'bg-surface text-ink rounded-2xl rounded-tl-sm'
@@ -1280,10 +1392,9 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
                                         onContextMenu={(event) => {
                                             if (!canModify) return
                                             event.preventDefault()
-                                            setContextMenu({
-                                                message,
-                                                x: Math.min(event.clientX, window.innerWidth - 176),
-                                                y: Math.min(event.clientY, window.innerHeight - 104),
+                                            openMessageMenu(message, event.currentTarget, {
+                                                x: event.clientX,
+                                                y: event.clientY,
                                             })
                                         }}
                                     >
@@ -1295,6 +1406,19 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
                                         )}
                                     </div>
                                 </div>
+                                {canModify && (
+                                    <button
+                                        type="button"
+                                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-muted opacity-70 hover:bg-surface hover:text-ink hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-brand"
+                                        aria-label="메시지 메뉴"
+                                        aria-haspopup="menu"
+                                        aria-controls="message-context-menu"
+                                        aria-expanded={contextMenu?.message.id === message.id}
+                                        onClick={(event) => openMessageMenu(message, event.currentTarget)}
+                                    >
+                                        <FiMoreVertical size={17} aria-hidden="true" />
+                                    </button>
+                                )}
                                 {showMessageTime && (
                                     <span className={`mb-1 whitespace-nowrap text-xs text-sub ${mine ? 'order-first' : ''}`}>
                                         {formatMessageTime(message.createdAt)}
@@ -1311,8 +1435,9 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
                                     </div>
                                 </div>
                             )}
-                        </>
-                    )}
+                            </>
+                        )}
+                    </div>
                 </div>
                 )}
 
@@ -1332,13 +1457,18 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
                 <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
                     {rateLimitAnnouncement}
                 </div>
+                <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+                    {messageAnnouncement}
+                </div>
                 <div className="p-4 border-t border-line">
                     <div className="relative">
                         <label htmlFor="message-input" className="sr-only">메시지 입력</label>
                         <input
                             id="message-input"
+                            name="message"
+                            autoComplete="off"
                             className="h-12 w-full rounded-full bg-surface pl-5 pr-14 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand/25"
-                            placeholder="메시지를 입력하세요..."
+                            placeholder="메시지를 입력하세요…"
                             value={input}
                             onChange={handleInputChange}
                             onCompositionStart={handleInputCompositionStart}
@@ -1369,18 +1499,27 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
 
             {isCreateRoomOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="presentation">
-                    <div className="w-full max-w-md rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="create-room-title">
+                    <div ref={createRoomDialogRef} tabIndex={-1} className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="create-room-title">
                         <h2 id="create-room-title" className="text-base font-bold text-ink">새 대화</h2>
+                        <label htmlFor="new-room-title" className="sr-only">대화방 이름</label>
                         <input
+                            id="new-room-title"
+                            name="roomTitle"
+                            autoComplete="off"
                             className="mt-4 h-10 w-full rounded-md border border-line bg-panel px-3 text-sm text-ink outline-none focus:border-brand"
-                            placeholder="대화방 이름 (선택)"
+                            placeholder="예: 콘서트 이야기방…"
                             value={newRoomTitle}
                             onChange={(event) => setNewRoomTitle(event.target.value)}
                         />
+                        <label htmlFor="new-room-members" className="sr-only">초대할 사용자명</label>
                         <input
-                            autoFocus
+                            id="new-room-members"
+                            name="memberUsernames"
+                            autoComplete="off"
+                            spellCheck={false}
+                            data-dialog-initial-focus
                             className="mt-3 h-10 w-full rounded-md border border-line bg-panel px-3 text-sm text-ink outline-none focus:border-brand"
-                            placeholder="초대할 사용자명, 사용자명"
+                            placeholder="예: user1, user2…"
                             value={newRoomMemberNames}
                             onChange={(event) => setNewRoomMemberNames(event.target.value)}
                             onKeyDown={(event) => {
@@ -1435,12 +1574,17 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
 
             {isAddMemberOpen && selectedRoom && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="presentation">
-                    <div className="w-full max-w-md rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="add-member-title">
+                    <div ref={addMemberDialogRef} tabIndex={-1} className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="add-member-title">
                         <h2 id="add-member-title" className="text-base font-bold text-ink">멤버 추가</h2>
+                        <label htmlFor="add-room-members" className="sr-only">추가할 사용자명</label>
                         <input
-                            autoFocus
+                            id="add-room-members"
+                            name="memberUsernames"
+                            autoComplete="off"
+                            spellCheck={false}
+                            data-dialog-initial-focus
                             className="mt-4 h-10 w-full rounded-md border border-line bg-panel px-3 text-sm text-ink outline-none focus:border-brand"
-                            placeholder="추가할 사용자명, 사용자명"
+                            placeholder="예: user1, user2…"
                             value={addMemberNames}
                             onChange={(event) => setAddMemberNames(event.target.value)}
                             onKeyDown={(event) => {
@@ -1495,7 +1639,7 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
 
             {leaveRoomTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="presentation">
-                    <div className="w-full max-w-sm rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="leave-room-title">
+                    <div ref={leaveRoomDialogRef} tabIndex={-1} className="max-h-[90dvh] w-full max-w-sm overflow-y-auto overscroll-contain rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="leave-room-title">
                         <h2 id="leave-room-title" className="text-base font-bold text-ink">채팅방 나가기</h2>
                         <p className="mt-2 text-sm text-sub">
                             {getRoomDisplayName(leaveRoomTarget, myProfileQuery.data?.userId)} 대화방에서 나갈까요? 대화 목록에서 사라져요.
@@ -1503,6 +1647,7 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
                         <div className="mt-5 flex justify-end gap-2">
                             <button
                                 type="button"
+                                data-dialog-initial-focus
                                 className="h-9 rounded-md px-3 text-sm text-sub hover:bg-surface"
                                 onClick={() => setLeaveRoomTarget(null)}
                                 disabled={isLeavingRoom}
@@ -1524,16 +1669,22 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
 
             {contextMenu && (
                 <div
+                    id="message-context-menu"
+                    ref={contextMenuRef}
                     role="menu"
+                    aria-label="메시지 작업"
                     className="fixed z-50 w-40 rounded-lg border border-line bg-panel p-1 shadow-lg"
                     style={{ left: contextMenu.x, top: contextMenu.y }}
                     onPointerDown={(event) => event.stopPropagation()}
+                    onKeyDown={handleMessageMenuKeyDown}
+                    onBlur={handleMessageMenuBlur}
                 >
                     <button
                         type="button"
                         role="menuitem"
-                        className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm text-ink hover:bg-surface"
+                        className="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left text-sm text-ink hover:bg-surface"
                         onClick={() => {
+                            contextMenu.trigger?.focus({ preventScroll: true })
                             setEditingMessage(contextMenu.message)
                             setEditText(contextMenu.message.content)
                             setContextMenu(null)
@@ -1545,8 +1696,9 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
                     <button
                         type="button"
                         role="menuitem"
-                        className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-left text-sm text-danger hover:bg-panel-subtle"
+                        className="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left text-sm text-danger hover:bg-panel-subtle"
                         onClick={() => {
+                            contextMenu.trigger?.focus({ preventScroll: true })
                             setDeleteTarget(contextMenu.message)
                             setContextMenu(null)
                         }}
@@ -1581,10 +1733,14 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
 
             {editingMessage && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="presentation">
-                    <div className="w-full max-w-md rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="edit-message-title">
+                    <div ref={editMessageDialogRef} tabIndex={-1} className="max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="edit-message-title">
                         <h2 id="edit-message-title" className="text-base font-bold text-ink">메시지 수정</h2>
+                        <label htmlFor="edit-message-content" className="sr-only">메시지 내용</label>
                         <textarea
-                            autoFocus
+                            id="edit-message-content"
+                            name="messageContent"
+                            autoComplete="off"
+                            data-dialog-initial-focus
                             className="mt-4 min-h-28 w-full resize-y rounded-lg border border-line bg-panel p-3 text-sm text-ink outline-none focus:border-brand"
                             value={editText}
                             onChange={(event) => setEditText(event.target.value)}
@@ -1616,12 +1772,13 @@ const MessagePage: React.FC<MessagePageProps> = ({ standalone = false }) => {
 
             {deleteTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" role="presentation">
-                    <div className="w-full max-w-sm rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="delete-message-title">
+                    <div ref={deleteMessageDialogRef} tabIndex={-1} className="max-h-[90dvh] w-full max-w-sm overflow-y-auto overscroll-contain rounded-lg bg-panel p-5 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="delete-message-title">
                         <h2 id="delete-message-title" className="text-base font-bold text-ink">메시지 삭제</h2>
                         <p className="mt-2 text-sm text-sub">삭제한 메시지는 복구할 수 없어요.</p>
                         <div className="mt-5 flex justify-end gap-2">
                             <button
                                 type="button"
+                                data-dialog-initial-focus
                                 className="h-9 rounded-md px-3 text-sm text-sub hover:bg-surface"
                                 onClick={() => setDeleteTarget(null)}
                                 disabled={messageActionLoading}

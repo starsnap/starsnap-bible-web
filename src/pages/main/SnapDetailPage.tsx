@@ -1160,6 +1160,9 @@ const SnapDetailPage: React.FC = () => {
                                 <img
                                     src={creatorImageCandidates[0]}
                                     alt={`${createdUser.username} 프로필`}
+                                    width={36}
+                                    height={36}
+                                    loading="lazy"
                                     className="w-9 h-9 rounded-full object-cover border border-line shrink-0"
                                     onError={(e) => applyNextImageCandidate(e.currentTarget, creatorImageCandidates)}
                                 />
@@ -1239,6 +1242,8 @@ const SnapDetailPage: React.FC = () => {
                                                 photo.fileKey,
                                             )}
                                             alt="스냅 사진"
+                                            width={1200}
+                                            height={1200}
                                             className="w-full h-full object-cover"
                                             draggable={false}
                                             onError={(e) => {
@@ -1385,6 +1390,9 @@ const SnapDetailPage: React.FC = () => {
                                                 <img
                                                     src={imageCandidates[0]}
                                                     alt={`${group.name} 이미지`}
+                                                    width={40}
+                                                    height={40}
+                                                    loading="lazy"
                                                     className="w-10 h-10 rounded-full object-cover border border-line"
                                                     onError={(e) =>
                                                         applyNextImageCandidate(e.currentTarget, imageCandidates)
@@ -1419,6 +1427,9 @@ const SnapDetailPage: React.FC = () => {
                                                 <img
                                                     src={imageCandidates[0]}
                                                     alt={`${star.name} 이미지`}
+                                                    width={40}
+                                                    height={40}
+                                                    loading="lazy"
                                                     className="w-10 h-10 rounded-full object-cover border border-line"
                                                     onError={(e) =>
                                                         applyNextImageCandidate(e.currentTarget, imageCandidates)
@@ -1475,7 +1486,7 @@ const SnapDetailPage: React.FC = () => {
                                                 void handleCommentSubmit()
                                             }
                                         }}
-                                        placeholder="댓글 달기..."
+                                        placeholder="댓글을 입력하세요…"
                                         className="flex-1 h-9 rounded-lg border border-line bg-surface px-3 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand"
                                     />
                                     <button
@@ -1766,6 +1777,9 @@ const CommentRow: React.FC<CommentRowProps> = ({ comment, isMine, onDelete, onRe
                 <img
                     src={imageCandidates[0]}
                     alt={`${username} 프로필`}
+                    width={28}
+                    height={28}
+                    loading="lazy"
                     className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5"
                     onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                 />

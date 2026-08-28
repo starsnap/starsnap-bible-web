@@ -166,6 +166,8 @@ const ProfileEditPage: React.FC = () => {
             <div className="mt-6 rounded-2xl border border-line bg-panel p-6">
                 <input
                     ref={fileInputRef}
+                    id="profile-image-input"
+                    name="profileImage"
                     type="file"
                     accept="image/*"
                     className="hidden"
@@ -178,6 +180,8 @@ const ProfileEditPage: React.FC = () => {
                             <img
                                 src={imageCandidates[0]}
                                 alt="프로필 이미지"
+                                width={96}
+                                height={96}
                                 className="w-24 h-24 rounded-full object-cover border border-line"
                                 onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                             />
@@ -197,9 +201,14 @@ const ProfileEditPage: React.FC = () => {
                 </div>
 
                 <div className="mt-6">
-                    <label className="block text-sm font-bold text-ink mb-2">닉네임</label>
+                    <label htmlFor="profile-username" className="block text-sm font-bold text-ink mb-2">닉네임</label>
                     <div className="relative">
                         <input
+                            id="profile-username"
+                            name="username"
+                            autoComplete="username"
+                            spellCheck={false}
+                            aria-describedby="profile-username-status"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             className={`${inputBase} pr-11`}
@@ -210,6 +219,8 @@ const ProfileEditPage: React.FC = () => {
                         )}
                     </div>
                     <p
+                        id="profile-username-status"
+                        aria-live="polite"
                         className={`mt-1 text-xs ${
                             username.length > 0 && !usernameValid
                                 ? 'text-danger'
@@ -223,7 +234,7 @@ const ProfileEditPage: React.FC = () => {
                         {username.length > 0 && !usernameValid
                             ? '닉네임은 4~12자의 영문/숫자만 가능합니다.'
                             : usernameChanged && usernameValid && usernameCheck.loading
-                            ? '닉네임 중복 확인 중...'
+                            ? '닉네임 중복 확인 중…'
                             : usernameChanged && usernameCheck.available === false
                             ? '이미 사용중인 닉네임입니다.'
                             : usernameChanged && usernameCheck.available === true
@@ -235,11 +246,11 @@ const ProfileEditPage: React.FC = () => {
                 </div>
 
                 <div className="mt-4">
-                    <label className="block text-sm font-bold text-ink mb-2">이메일</label>
-                    <input value={profile.email} disabled className={`${inputBase} opacity-70 cursor-not-allowed`} />
+                    <label htmlFor="profile-email" className="block text-sm font-bold text-ink mb-2">이메일</label>
+                    <input id="profile-email" name="email" type="email" autoComplete="email" value={profile.email} disabled className={`${inputBase} opacity-70 cursor-not-allowed`} />
                 </div>
 
-                {errorMessage && <p className="mt-4 text-sm text-danger">{errorMessage}</p>}
+                {errorMessage && <p className="mt-4 text-sm text-danger" role="alert">{errorMessage}</p>}
 
                 <div className="mt-6 flex justify-end gap-2">
                     <button
@@ -256,7 +267,7 @@ const ProfileEditPage: React.FC = () => {
                         disabled={saving || (usernameChanged && usernameCheck.available !== true)}
                         className="h-11 px-5 rounded-lg bg-brand text-on-brand text-sm font-bold hover:brightness-95 disabled:opacity-60"
                     >
-                        {saving ? '저장 중...' : '저장'}
+                        {saving ? '저장 중…' : '저장'}
                     </button>
                 </div>
             </div>

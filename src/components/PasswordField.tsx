@@ -68,7 +68,7 @@ export const PasswordField: React.FC<Props> = ({ label, name, error, className =
       <div className="flex items-center gap-2">
         <div className="w-full bg-placeholder h-2 rounded overflow-hidden">
           <div
-            className={`h-2 rounded transition-all duration-200 ${strength === 0 ? 'w-1/4 bg-danger' : strength === 1 ? 'w-1/2 bg-brand' : 'w-full bg-success'}`}
+            className={`h-2 rounded transition-[width] duration-200 ${strength === 0 ? 'w-1/4 bg-danger' : strength === 1 ? 'w-1/2 bg-brand' : 'w-full bg-success'}`}
             style={{ width: strength === 0 ? '33%' : strength === 1 ? '66%' : '100%' }}
             aria-hidden
           />

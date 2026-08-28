@@ -114,16 +114,19 @@ const SnapCard: React.FC<Props> = ({ snap, showAuthor = true, onClick }) => {
         navigate(`/user/${encodeURIComponent(username)}`)
     }
 
+    const cardLabel = snap.author.trim() ? `${snap.author}님의 스냅` : '스냅'
+
     return (
-        <div
-            className="group rounded-2xl overflow-hidden bg-panel border border-line cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition"
-            onClick={onClick}
-        >
+        <article className="group rounded-2xl overflow-hidden bg-panel border border-line hover:shadow-md hover:-translate-y-0.5 transition">
             <div className="relative bg-placeholder overflow-hidden" style={{ aspectRatio: snap.aspectRatio }}>
                 {photoKey && (
                     <img
                         src={buildS3Url(import.meta.env.VITE_S3_OUTPUT_BUCKET_URL, photoKey)}
                         alt="스냅 썸네일"
+                        width={1200}
+                        height={Math.max(1, Math.round(1200 / snap.aspectRatio))}
+                        loading="lazy"
+                        decoding="async"
                         className="w-full h-full object-cover"
                         onError={(e) => {
                             const img = e.currentTarget
@@ -134,10 +137,18 @@ const SnapCard: React.FC<Props> = ({ snap, showAuthor = true, onClick }) => {
                         }}
                     />
                 )}
+                {onClick && (
+                    <button
+                        type="button"
+                        className="absolute inset-0 z-[1] h-full w-full rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
+                        onClick={onClick}
+                        aria-label={`${cardLabel} 상세 보기`}
+                    />
+                )}
                 <button
                     onClick={handleLikeClick}
                     disabled={liking}
-                    className="absolute top-2 right-2 w-11 h-11 rounded-full bg-[var(--ss-surface-translucent)] backdrop-blur flex items-center justify-center shadow-sm"
+                    className="absolute top-2 right-2 z-[2] w-11 h-11 rounded-full bg-[var(--ss-surface-translucent)] backdrop-blur flex items-center justify-center shadow-sm"
                     aria-label="좋아요"
                 >
                     <HeartIcon
@@ -158,6 +169,10 @@ const SnapCard: React.FC<Props> = ({ snap, showAuthor = true, onClick }) => {
                         <img
                             src={authorImageCandidates[0]}
                             alt={`${snap.author} 프로필`}
+                            width={24}
+                            height={24}
+                            loading="lazy"
+                            decoding="async"
                             className="w-6 h-6 rounded-full object-cover shrink-0"
                             onError={(e) => applyNextImageCandidate(e.currentTarget, authorImageCandidates)}
                         />
@@ -167,7 +182,7 @@ const SnapCard: React.FC<Props> = ({ snap, showAuthor = true, onClick }) => {
                     <span className="text-sm text-ink truncate">{snap.author}</span>
                 </button>
             )}
-        </div>
+        </article>
     )
 }
 

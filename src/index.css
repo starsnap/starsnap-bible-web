@@ -227,6 +227,11 @@ code {
     monospace;
 }
 
+.chat-message-item {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 72px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

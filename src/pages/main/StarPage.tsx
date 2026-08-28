@@ -1,5 +1,5 @@
-import React, { useDeferredValue, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useCallback, useDeferredValue } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
     searchStarGroups,
@@ -17,8 +17,26 @@ type StarTab = 'star' | 'group'
 
 const StarPage: React.FC = () => {
     const navigate = useNavigate()
-    const [activeTab, setActiveTab] = useState<StarTab>('star')
-    const [query, setQuery] = useState('')
+    const [searchParams, setSearchParams] = useSearchParams()
+    const activeTab: StarTab = searchParams.get('tab') === 'group' ? 'group' : 'star'
+    const query = searchParams.get('q') ?? ''
+    const selectTab = useCallback((value: StarTab) => {
+        setSearchParams((current) => {
+            const next = new URLSearchParams(current)
+            if (value === 'group') next.set('tab', 'group')
+            else next.delete('tab')
+            next.delete('q')
+            return next
+        }, { replace: true })
+    }, [setSearchParams])
+    const setQuery = useCallback((value: string) => {
+        setSearchParams((current) => {
+            const next = new URLSearchParams(current)
+            if (value.trim()) next.set('q', value)
+            else next.delete('q')
+            return next
+        }, { replace: true })
+    }, [setSearchParams])
     const deferredQuery = useDeferredValue(query.trim())
 
     const starsQuery = useQuery({
@@ -43,6 +61,8 @@ const StarPage: React.FC = () => {
                     className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted"
                 />
                 <input
+                    name="query"
+                    autoComplete="off"
                     value={query}
                     onChange={(event) => setQuery(event.target.value)}
                     className="h-12 w-full rounded-2xl border border-transparent bg-placeholder pl-12 pr-4 text-base text-ink outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/25"
@@ -56,10 +76,7 @@ const StarPage: React.FC = () => {
                     type="button"
                     role="tab"
                     aria-selected={activeTab === 'star'}
-                    onClick={() => {
-                        setActiveTab('star')
-                        setQuery('')
-                    }}
+                    onClick={() => selectTab('star')}
                     className={`min-h-12 rounded-xl text-lg font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                         activeTab === 'star' ? 'text-ink' : 'text-muted hover:text-sub'
                     }`}
@@ -70,10 +87,7 @@ const StarPage: React.FC = () => {
                     type="button"
                     role="tab"
                     aria-selected={activeTab === 'group'}
-                    onClick={() => {
-                        setActiveTab('group')
-                        setQuery('')
-                    }}
+                    onClick={() => selectTab('group')}
                     className={`min-h-12 rounded-xl text-lg font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                         activeTab === 'group' ? 'text-ink' : 'text-muted hover:text-sub'
                     }`}
@@ -106,6 +120,9 @@ const StarPage: React.FC = () => {
                                                 <img
                                                     src={imageCandidates[0]}
                                                     alt={`${star.name} 프로필`}
+                                                    width={56}
+                                                    height={56}
+                                                    loading="lazy"
                                                     className="h-14 w-14 shrink-0 rounded-full object-cover"
                                                     onError={(event) =>
                                                         applyNextImageCandidate(event.currentTarget, imageCandidates)
@@ -151,6 +168,9 @@ const StarPage: React.FC = () => {
                                         <img
                                             src={imageCandidates[0]}
                                             alt={`${group.name} 프로필`}
+                                            width={640}
+                                            height={640}
+                                            loading="lazy"
                                             className="absolute inset-0 h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
                                             onError={(event) =>
                                                 applyNextImageCandidate(event.currentTarget, imageCandidates)

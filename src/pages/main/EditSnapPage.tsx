@@ -295,6 +295,8 @@ const EditSnapPage: React.FC = () => {
                         <img
                             src={buildS3Url(import.meta.env.VITE_S3_OUTPUT_BUCKET_URL, previewPhoto.fileKey)}
                             alt="스냅 미리보기"
+                            width={1200}
+                            height={600}
                             className="w-full h-full object-cover"
                             onError={(e) => {
                                 const img = e.currentTarget
@@ -380,6 +382,9 @@ const EditSnapPage: React.FC = () => {
                                             <img
                                                 src={imageCandidates[0]}
                                                 alt={`${star.name} 프로필`}
+                                                width={72}
+                                                height={72}
+                                                loading="lazy"
                                                 className="w-full h-full object-cover"
                                                 onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                                             />
@@ -423,6 +428,9 @@ const EditSnapPage: React.FC = () => {
                                             <img
                                                 src={imageCandidates[0]}
                                                 alt={`${group.name} 썸네일`}
+                                                width={100}
+                                                height={60}
+                                                loading="lazy"
                                                 className="w-full h-full object-cover"
                                                 onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                                             />
@@ -531,6 +539,9 @@ const EditSnapPage: React.FC = () => {
                                                     <img
                                                         src={imageCandidates[0]}
                                                         alt={`${star.name} 프로필`}
+                                                        width={56}
+                                                        height={56}
+                                                        loading="lazy"
                                                         className="block w-14 h-14 rounded-full object-cover mx-auto"
                                                         onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                                                     />
@@ -633,6 +644,9 @@ const EditSnapPage: React.FC = () => {
                                                     <img
                                                         src={imageCandidates[0]}
                                                         alt={`${group.name} 썸네일`}
+                                                        width={56}
+                                                        height={56}
+                                                        loading="lazy"
                                                         className="block w-14 h-14 rounded-xl object-cover mx-auto"
                                                         onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                                                     />

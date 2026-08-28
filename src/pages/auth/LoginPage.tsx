@@ -112,7 +112,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
                     </p>
                 </div>
 
-                <form className="mt-7 flex flex-col gap-4" onSubmit={handleSubmit} autoComplete="off">
+                <form className="mt-7 flex flex-col gap-4" onSubmit={handleSubmit}>
                     <div>
                         <label htmlFor="login-identifier" className="block text-sm font-bold text-ink mb-1.5">아이디 또는 이메일</label>
                         <input
@@ -120,7 +120,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
                             className={inputClass}
                             name="identifier"
                             type="text"
-                            placeholder="아이디 또는 이메일을 입력해주세요"
+                            placeholder="예: 아이디 또는 이메일…"
                             value={identifier}
                             onChange={(e) => setIdentifier(e.target.value)}
                             autoComplete="username"
@@ -136,7 +136,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
                             id="login-password"
                             className={inputClass}
                             name="password"
-                            placeholder="비밀번호"
+                            placeholder="비밀번호를 입력하세요…"
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -152,7 +152,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
                         className="h-12 rounded-xl mt-1 font-bold text-on-brand bg-brand shadow-sm hover:brightness-95"
                         disabled={!isEnabled}
                     >
-                        {loading ? '로그인 중...' : '로그인'}
+                        {loading ? '로그인 중…' : '로그인'}
                     </button>
 
                     <div className="flex min-h-11 items-center justify-center text-center text-sm text-sub">

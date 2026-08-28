@@ -81,10 +81,10 @@ const ChatLayout: React.FC = () => {
                             className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold text-sub hover:bg-panel-hover hover:text-ink sm:px-3"
                             onClick={() => void handleLogout()}
                             disabled={loggingOut}
-                            aria-label={loggingOut ? '로그아웃 중' : '로그아웃'}
+                            aria-label={loggingOut ? '로그아웃 중…' : '로그아웃'}
                         >
                             <FiLogOut size={17} aria-hidden="true" />
-                            <span className="hidden md:inline">{loggingOut ? '로그아웃 중' : '로그아웃'}</span>
+                            <span className="hidden md:inline">{loggingOut ? '로그아웃 중…' : '로그아웃'}</span>
                         </button>
                     </div>
                 </div>

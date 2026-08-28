@@ -42,6 +42,9 @@ const StarGroupPage: React.FC = () => {
                                 <img
                                     src={imageCandidates[0]}
                                     alt={`${group.name} 프로필`}
+                                    width={640}
+                                    height={480}
+                                    loading="lazy"
                                     className="w-full h-full object-cover absolute inset-0"
                                     onError={(e) => applyNextImageCandidate(e.currentTarget, imageCandidates)}
                                 />

@@ -1,5 +1,5 @@
 import React from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { HomeIcon, PlusIcon, SearchIcon, StarIcon, UserIcon } from '../icons'
 
 const items = [
@@ -11,8 +11,6 @@ const items = [
 ]
 
 const BottomNav: React.FC = () => {
-    const location = useLocation()
-    const navigate = useNavigate()
     return (
         <nav
             className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-[var(--ss-nav-bg)] shadow-[0_-8px_28px_rgb(23_27_36_/_0.08)] backdrop-blur-xl lg:hidden"
@@ -21,30 +19,28 @@ const BottomNav: React.FC = () => {
         >
             <div className="mx-auto grid h-20 max-w-lg grid-cols-5 items-center px-2">
                 {items.map((item) => {
-                    const active = item.path === '/'
-                        ? location.pathname === '/'
-                        : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
                     const Icon = item.icon
                     return (
-                        <button
+                        <NavLink
                             key={item.key}
-                            type="button"
-                            onClick={() => navigate(item.path)}
-                            className={`relative mx-auto flex min-h-14 min-w-14 flex-col items-center justify-center gap-1 rounded-2xl text-xs font-semibold ${
-                                item.primary
+                            to={item.path}
+                            end={item.path === '/'}
+                            className={({ isActive }) => `relative mx-auto flex min-h-14 min-w-14 flex-col items-center justify-center gap-1 rounded-2xl text-xs font-semibold ${
+                                item.primary || isActive
                                     ? 'text-ink'
-                                    : active
-                                      ? 'text-ink'
-                                      : 'text-muted hover:bg-placeholder hover:text-sub'
+                                    : 'text-muted hover:bg-placeholder hover:text-sub'
                             }`}
-                            aria-current={active ? 'page' : undefined}
                         >
-                            <span className={item.primary ? 'flex h-9 w-12 items-center justify-center rounded-2xl bg-brand text-on-brand shadow-sm' : undefined}>
-                                <Icon size={item.primary ? 22 : 21} fill={active && !item.primary ? 'currentColor' : 'none'} />
-                            </span>
-                            <span>{item.label}</span>
-                            {active && !item.primary && <span className="absolute top-1.5 h-1 w-1 rounded-full bg-brand" />}
-                        </button>
+                            {({ isActive }) => (
+                                <>
+                                    <span className={item.primary ? 'flex h-9 w-12 items-center justify-center rounded-2xl bg-brand text-on-brand shadow-sm' : undefined}>
+                                        <Icon size={item.primary ? 22 : 21} fill={isActive && !item.primary ? 'currentColor' : 'none'} />
+                                    </span>
+                                    <span>{item.label}</span>
+                                    {isActive && !item.primary && <span className="absolute top-1.5 h-1 w-1 rounded-full bg-brand" aria-hidden="true" />}
+                                </>
+                            )}
+                        </NavLink>
                     )
                 })}
             </div>

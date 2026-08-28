@@ -11,6 +11,8 @@ const base = (size?: number): React.SVGProps<SVGSVGElement> => ({
     strokeWidth: 1.8,
     strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+    focusable: 'false',
 })
 
 export const StarIcon: React.FC<IconProps> = ({ size, ...p }) => (

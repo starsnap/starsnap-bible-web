@@ -1,5 +1,5 @@
 import React from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import {
     HomeIcon,
     CompassIcon,
@@ -43,7 +43,6 @@ const items: NavItem[] = [
 ]
 
 const Sidebar: React.FC<SidebarProps> = ({ mode, onToggleCompact }) => {
-    const navigate = useNavigate()
     const location = useLocation()
     const compact = mode === 'compact'
     const sourcePage = (location.state as { sourcePage?: string } | null)?.sourcePage
@@ -81,9 +80,10 @@ const Sidebar: React.FC<SidebarProps> = ({ mode, onToggleCompact }) => {
                             : activeByPath
                     const Icon = item.icon
                     return (
-                        <button
+                        <NavLink
                             key={item.path}
-                            onClick={() => navigate(item.path)}
+                            to={item.path}
+                            end={item.exact}
                             className={`relative w-full h-11 flex items-center rounded-xl transition-colors ${
                                 compact ? 'justify-center' : 'gap-3 pl-4'
                             } ${
@@ -98,7 +98,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mode, onToggleCompact }) => {
                             )}
                             <Icon size={20} className={active ? 'text-ink' : 'text-sub'} />
                             {!compact && <span className="text-body-sm">{item.label}</span>}
-                        </button>
+                        </NavLink>
                     )
                 })}
             </nav>
@@ -109,15 +109,13 @@ const Sidebar: React.FC<SidebarProps> = ({ mode, onToggleCompact }) => {
                     <ul className="flex flex-col gap-3">
                         {followedStars.map((star) => (
                             <li key={star.id}>
-                                <button
-                                    onClick={() =>
-                                        navigate(`/star/${toStarRouteKey({ name: star.name })}`)
-                                    }
+                                <Link
+                                    to={`/star/${toStarRouteKey({ name: star.name })}`}
                                     className="flex min-h-11 items-center gap-2.5 rounded-lg text-sub hover:text-ink transition-colors"
                                 >
                                     <span className="w-7 h-7 rounded-full bg-placeholder" />
                                     <span className="text-sm">{star.name}</span>
-                                </button>
+                                </Link>
                             </li>
                         ))}
                     </ul>
