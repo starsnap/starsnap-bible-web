@@ -9,7 +9,7 @@ on:
       - ".dockerignore"
       - "deploy/**"
       - "design-system/**"
-      - "Dockerfile"
+      - "dockerfile"
       - "index.html"
       - "nginx.conf"
       - "package.json"
@@ -61,6 +61,13 @@ jobs:
         shell: bash
         run: bash -n deploy/deploy-production.sh
 
+      - name: Test scoped rollout and rollback
+        run: >-
+          docker run --rm --tmpfs /runner-state
+          --volume "$GITHUB_WORKSPACE:/repo:ro"
+          bash:5.2@sha256:3bee76a96d86d5d2d5efc7c1c570e5a7c95db22348a26944e0e546fa174e3324
+          bash /repo/deploy/test-deploy-production.sh /repo
+
   publish:
     needs: quality
     runs-on: ubuntu-latest
@@ -93,6 +100,7 @@ jobs:
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: .
+          file: ./dockerfile
           platforms: linux/arm64
           push: true
           tags: ${{ env.IMAGE_REPOSITORY }}:sha-${{ github.sha }}
