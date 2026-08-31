@@ -6,7 +6,7 @@ import { queryClient } from '../../lib/query/queryClient';
 import token from '../../lib/token/token';
 
 type LoginPageProps = {
-    surface?: 'social' | 'chat';
+    surface?: 'social' | 'chat' | 'bible';
 };
 
 type LoginLocationState = {
@@ -25,6 +25,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
     const location = useLocation();
     const navigate = useNavigate();
     const isChatSurface = surface === 'chat';
+    const isBibleSurface = surface === 'bible';
+    const loginSubtitle = isChatSurface
+        ? 'SNS에서 이어진 대화를 메시지 전용 화면에서 만나보세요'
+        : isBibleSurface
+            ? '성경 말씀을 찾고, 구절마다 묵상을 기록해보세요'
+            : '좋아하는 스타의 순간을 한곳에 모아보세요';
 
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
@@ -106,9 +112,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
                         {isChatSurface ? 'StarSnap Chat' : 'StarSnap'}
                     </h1>
                     <p className="mt-2 text-sm text-sub">
-                        {isChatSurface
-                            ? 'SNS에서 이어진 대화를 메시지 전용 화면에서 만나보세요'
-                            : '좋아하는 스타의 순간을 한곳에 모아보세요'}
+                        {loginSubtitle}
                     </p>
                 </div>
 
