@@ -73,6 +73,11 @@ src/
 - `VITE_REPORT_BASE_URL`: 신고 API 기준 URL
 - `VITE_GOOGLE_CLIENT_ID`: Google OAuth 클라이언트 ID
 - `VITE_S3_INPUT_BUCKET_URL`, `VITE_S3_OUTPUT_BUCKET_URL`: 미디어 표시 기준 URL
+- `VITE_DEV_API_TARGET`: Vite 개발 프록시 REST 대상(기본 `https://api.starsnap.kr`)
+- `VITE_DEV_WS_TARGET`: Vite 개발 프록시 WebSocket 대상(기본 `wss://api.starsnap.kr`)
+
+실사용 계정으로 개발할 때는 HTTPS/WSS 대상만 사용한다. 격리된 로컬 환경에서
+평문 프록시가 꼭 필요하면 위 개발 전용 변수를 명시적으로 설정한다.
 
 ## 설치와 실행
 

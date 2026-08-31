@@ -6,7 +6,17 @@ COPY . .
 RUN npm run build
 
 FROM nginx:alpine
+RUN mkdir -p \
+    /tmp/nginx/client_temp \
+    /tmp/nginx/proxy_temp \
+    /tmp/nginx/fastcgi_temp \
+    /tmp/nginx/uwsgi_temp \
+    /tmp/nginx/scgi_temp \
+    && chown -R nginx:nginx /tmp/nginx \
+    && sed -i '/^user  nginx;$/d' /etc/nginx/nginx.conf \
+    && sed -i 's#pid        /run/nginx.pid;#pid /tmp/nginx/nginx.pid;#' /etc/nginx/nginx.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
+USER nginx
 EXPOSE 3000
 CMD ["nginx", "-g", "daemon off;"]
