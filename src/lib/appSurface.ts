@@ -6,7 +6,7 @@ const DEFAULT_SOCIAL_APP_URL = 'https://sns.starsnap.kr'
 
 export function resolveAppSurface(
     hostname: string,
-    configuredSurface = String(import.meta.env.VITE_APP_SURFACE || ''),
+    configuredSurface = String(import.meta.env.VITE_APP_SURFACE || 'bible'),
 ): AppSurface {
     const normalizedSurface = configuredSurface.trim().toLowerCase()
     if (normalizedSurface === 'chat') return 'chat'
