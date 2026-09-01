@@ -1,6 +1,7 @@
 name: Bible web CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
