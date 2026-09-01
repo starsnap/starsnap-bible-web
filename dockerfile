@@ -15,8 +15,8 @@ RUN mkdir -p \
     && chown -R nginx:nginx /tmp/nginx \
     && sed -i '/^user  nginx;$/d' /etc/nginx/nginx.conf \
     && sed -i 's#pid        /run/nginx.pid;#pid /tmp/nginx/nginx.pid;#' /etc/nginx/nginx.conf
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --chmod=0644 nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder --chown=nginx:nginx /app/dist /usr/share/nginx/html
 USER nginx
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=6 \
