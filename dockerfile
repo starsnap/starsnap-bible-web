@@ -19,4 +19,6 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
 USER nginx
 EXPOSE 3000
+HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=6 \
+  CMD wget -qO- http://127.0.0.1:3000/ | grep -q '<title>' || exit 1
 CMD ["nginx", "-g", "daemon off;"]

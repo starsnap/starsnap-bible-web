@@ -2,6 +2,12 @@ name: Bible web CI
 
 on:
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: Deploy starsnap-bible_web after verification
+        required: true
+        type: boolean
+        default: false
   push:
     branches:
       - main
@@ -27,3 +33,122 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Build Bible web
         run: npm run build
+
+      - name: Build container image
+        run: docker build --tag starsnap-bible-web:ci --file dockerfile .
+
+      - name: Smoke container runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -d --name starsnap-bible-web-smoke --publish 3103:3000 starsnap-bible-web:ci
+          trap 'docker stop starsnap-bible-web-smoke >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:3103/ | grep --quiet 'StarSnap'; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs starsnap-bible-web-smoke
+              exit 1
+            fi
+            sleep 1
+          done
+          test "$(docker inspect --format '{{.Config.User}}' starsnap-bible-web-smoke)" = nginx
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    needs: build
+    runs-on:
+      group: starsnap-production
+      labels: starsnap-swarm
+    permissions:
+      contents: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Deploy Bible web only
+        shell: bash
+        run: |
+          set -euo pipefail
+          exec 9>/runner-state/starsnap-production-deploy.lock
+          flock 9
+
+          service=starsnap-bible_web
+          network=starsnap-main_app-net
+          image="localhost/starsnap-bible-web:${GITHUB_SHA}"
+
+          test "$(docker info --format '{{.Swarm.ControlAvailable}}')" = true
+          node_id="$(docker info --format '{{.Swarm.NodeID}}')"
+          test "$(docker node inspect --format '{{index .Spec.Labels "starsnap.actions-runner"}}' "$node_id")" = true
+          network_id="$(docker network inspect --format '{{.Id}}' "$network")"
+          docker build --pull --tag "$image" --file dockerfile .
+
+          if docker service inspect "$service" >/dev/null 2>&1; then
+            network_args=()
+            has_network=false
+            while IFS= read -r attached_network; do
+              [ -n "$attached_network" ] || continue
+              if [ "$attached_network" = "$network_id" ]; then
+                has_network=true
+              else
+                echo "Refusing to mutate Bible web with unexpected network: $attached_network" >&2
+                exit 1
+              fi
+            done < <(docker service inspect \
+              --format '{{range .Spec.TaskTemplate.Networks}}{{println .Target}}{{end}}' "$service")
+            if [ "$has_network" != true ]; then
+              network_args+=(--network-add "$network")
+            fi
+
+            constraint_args=()
+            has_current_node=false
+            while IFS= read -r constraint; do
+              case "$constraint" in
+                "node.id==$node_id") has_current_node=true ;;
+                node.id==*) constraint_args+=(--constraint-rm "$constraint") ;;
+              esac
+            done < <(docker service inspect \
+              --format '{{range .Spec.TaskTemplate.Placement.Constraints}}{{println .}}{{end}}' "$service")
+            if [ "$has_current_node" != true ]; then
+              constraint_args+=(--constraint-add "node.id==$node_id")
+            fi
+
+            docker service update \
+              --detach=false \
+              --no-resolve-image \
+              --image "$image" \
+              "${network_args[@]}" \
+              "${constraint_args[@]}" \
+              --update-order stop-first \
+              --update-parallelism 1 \
+              --update-monitor 120s \
+              --update-failure-action rollback \
+              "$service"
+          else
+            docker service create \
+              --detach=false \
+              --no-resolve-image \
+              --name "$service" \
+              --label starsnap.owner=starsnap-bible-web \
+              --constraint "node.id==$node_id" \
+              --network "$network" \
+              "$image"
+          fi
+
+          for _ in $(seq 1 60); do
+            container="$(docker ps \
+              --filter "label=com.docker.swarm.service.name=$service" \
+              --filter status=running \
+              --format '{{.ID}}' | head -n 1)"
+            if [ -n "$container" ] && \
+              [ "$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$container")" = healthy ]; then
+              break
+            fi
+            sleep 2
+          done
+          test -n "${container:-}"
+          test "$(docker inspect --format '{{.State.Health.Status}}' "$container")" = healthy
+          test "$(docker service inspect --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}' "$service")" = "$image"
+          test "$(docker service ls --filter "name=$service" --format '{{.Replicas}}')" = 1/1

@@ -43,7 +43,7 @@ const BibleLayout = () => {
         setLoggingOut(true)
 
         try {
-            await CustomAxios.post('auth/logout')
+            await CustomAxios.post('bible/auth/logout')
         } catch (error) {
             console.warn('[auth] 서버 로그아웃 요청 실패', error)
         } finally {

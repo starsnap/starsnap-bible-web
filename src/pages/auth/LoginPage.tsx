@@ -55,7 +55,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
         setLoading(true);
         try {
             const loginType = identifier.includes('@') ? 'EMAIL' : 'USERNAME';
-            const resp = await CustomAxios.post('auth/login', {
+            const resp = await CustomAxios.post(isBibleSurface ? 'bible/auth/login' : 'auth/login', {
                 username: identifier,
                 password: password,
                 loginType,
@@ -109,7 +109,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
                             height={96}
                             className="h-10 w-10 shrink-0 rounded-xl object-cover"
                         />
-                        {isChatSurface ? 'StarSnap Chat' : 'StarSnap'}
+                        {isChatSurface ? 'StarSnap Chat' : isBibleSurface ? 'StarSnap Bible' : 'StarSnap'}
                     </h1>
                     <p className="mt-2 text-sm text-sub">
                         {loginSubtitle}
