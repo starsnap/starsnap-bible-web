@@ -56,8 +56,14 @@ jobs:
           test "$(docker inspect --format '{{.Config.User}}' starsnap-bible-web-smoke)" = nginx
 
   deploy:
-    if: github.event_name == 'workflow_dispatch' && inputs.deploy
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.deploy &&
+      github.ref == 'refs/heads/main' &&
+      github.repository == 'starsnap/starsnap-bible-web' &&
+      vars.SWARM_DEPLOY_ENABLED == 'true'
     needs: build
+    environment: production
     runs-on:
       group: starsnap-production
       labels: starsnap-swarm
@@ -68,6 +74,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ github.sha }}
+      - name: Verify deployment revision
+        shell: bash
+        run: |
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - name: Deploy Bible web only
         shell: bash
         run: |
