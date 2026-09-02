@@ -1,13 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import axios from 'axios';
 import { useLocation, useNavigate } from 'react-router-dom';
-import CustomAxios from '../../lib/axios/CustomAxios';
-import { getSocialAppUrl } from '../../lib/appSurface';
-import { queryClient } from '../../lib/query/queryClient';
-import token from '../../lib/token/token';
-
-type LoginPageProps = {
-    surface?: 'social' | 'chat' | 'bible';
-};
+import AuthAxios from '../../lib/axios/AuthAxios';
 
 type LoginLocationState = {
     from?: unknown;
@@ -19,58 +13,33 @@ const resolvePostLoginPath = (state: LoginLocationState | null): string => {
     return path;
 };
 
-const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
+const LoginPage: React.FC = () => {
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const location = useLocation();
     const navigate = useNavigate();
-    const isChatSurface = surface === 'chat';
-    const isBibleSurface = surface === 'bible';
-    const loginSubtitle = isChatSurface
-        ? 'SNS에서 이어진 대화를 메시지 전용 화면에서 만나보세요'
-        : isBibleSurface
-            ? '성경 말씀을 찾고, 한 절 또는 여러 절로 QT를 기록해보세요'
-            : '좋아하는 스타의 순간을 한 곳에 모아보세요';
-
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState('');
 
     const isEnabled = identifier.trim() !== '' && password.trim() !== '' && !loading;
-
-    useEffect(() => {
-        if (!isChatSurface) return;
-
-        const previousTitle = document.title;
-        document.documentElement.classList.add('chat-login-viewport');
-        document.title = 'StarSnap Chat 로그인';
-        return () => {
-            document.documentElement.classList.remove('chat-login-viewport');
-            document.title = previousTitle;
-        };
-    }, [isChatSurface]);
 
     const handleLogin = async () => {
         if (!isEnabled) return;
         setErrorMessage('');
         setLoading(true);
         try {
-            const loginType = identifier.includes('@') ? 'EMAIL' : 'USERNAME';
-            const resp = await CustomAxios.post(isBibleSurface ? 'bible/auth/login' : 'auth/login', {
+            const resp = await AuthAxios.post('bible/auth/login', {
                 username: identifier,
                 password: password,
-                loginType,
             });
 
             if (resp.status === 200 && resp.data) {
-                queryClient.clear();
-                token.markAuthenticated();
                 navigate(resolvePostLoginPath(location.state as LoginLocationState | null), { replace: true });
             } else {
                 setErrorMessage('로그인에 실패했습니다. 다시 시도해주세요.');
             }
-        } catch (err: any) {
-            console.error('login error', err);
-            const status = err?.response?.status;
+        } catch (err: unknown) {
+            const status = axios.isAxiosError(err) ? err.response?.status : undefined;
             if (typeof status === 'number' && status >= 400 && status < 500) {
                 setErrorMessage('아이디 또는 비밀번호를 확인해주세요.');
             } else {
@@ -91,9 +60,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
 
     return (
         <div
-            className={`relative flex items-center justify-center overflow-hidden px-4 ${
-                isChatSurface ? 'h-[100svh] min-h-0 py-4 sm:py-10' : 'min-h-screen py-10'
-            }`}
+                className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10"
             style={{
                 background: 'radial-gradient(circle at 18% 14%, var(--ss-brand-soft) 0, transparent 30%), radial-gradient(circle at 86% 86%, var(--ss-border) 0, transparent 34%), var(--ss-canvas)',
             }}
@@ -109,10 +76,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
                             height={96}
                             className="h-10 w-10 shrink-0 rounded-xl object-cover"
                         />
-                        {isChatSurface ? 'StarSnap Chat' : isBibleSurface ? 'StarSnap Bible' : 'StarSnap'}
+                        StarSnap Bible
                     </h1>
                     <p className="mt-2 text-sm text-sub">
-                        {loginSubtitle}
+                        성경 말씀을 찾고, 한 절 또는 여러 절로 QT를 기록해보세요
                     </p>
                 </div>
 
@@ -144,7 +111,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
                             autoComplete="current-password"
                         />
                     </div>
@@ -161,22 +127,13 @@ const LoginPage: React.FC<LoginPageProps> = ({ surface = 'social' }) => {
 
                     <div className="flex min-h-11 items-center justify-center text-center text-sm text-sub">
                         아직 계정이 없으신가요?{' '}
-                        {isChatSurface ? (
-                            <a
-                                href={getSocialAppUrl('/signup')}
-                                className="inline-flex min-h-11 items-center rounded-lg px-1.5 font-bold text-ink underline decoration-brand decoration-2 underline-offset-4"
-                            >
-                                SNS에서 회원가입
-                            </a>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={() => navigate('/signup')}
-                                className="min-h-11 rounded-lg px-1.5 font-bold text-ink underline decoration-brand decoration-2 underline-offset-4"
-                            >
-                                회원가입
-                            </button>
-                        )}
+                        <button
+                            type="button"
+                            onClick={() => navigate('/signup')}
+                            className="min-h-11 rounded-lg px-1.5 font-bold text-ink underline decoration-brand decoration-2 underline-offset-4"
+                        >
+                            Bible 계정 만들기
+                        </button>
                     </div>
                 </form>
             </div>

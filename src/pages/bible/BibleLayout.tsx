@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useNavigate } from 'react-router-dom'
-import { FiBookOpen, FiExternalLink, FiLogOut } from 'react-icons/fi'
-import CustomAxios from '../../lib/axios/CustomAxios'
-import { getSocialAppUrl } from '../../lib/appSurface'
-import { queryClient } from '../../lib/query/queryClient'
-import token from '../../lib/token/token'
+import { FiBookOpen, FiLogOut } from 'react-icons/fi'
+import AuthAxios from '../../lib/axios/AuthAxios'
 import './bible.css'
 
 const BibleLayout = () => {
     const navigate = useNavigate()
     const [loggingOut, setLoggingOut] = useState(false)
+    const [logoutError, setLogoutError] = useState('')
     const [hasUnsavedChanges, setHasUnsavedChangesState] = useState(false)
     const hasUnsavedChangesRef = useRef(false)
 
@@ -39,17 +37,17 @@ const BibleLayout = () => {
     const handleLogout = async () => {
         if (loggingOut) return
         if (hasUnsavedChanges && !window.confirm('저장하지 않은 묵상이 있습니다. 로그아웃하고 내용을 버릴까요?')) return
-        setHasUnsavedChanges(false)
         setLoggingOut(true)
+        setLogoutError('')
 
         try {
-            await CustomAxios.post('bible/auth/logout')
-        } catch (error) {
-            console.warn('[auth] 서버 로그아웃 요청 실패', error)
-        } finally {
-            queryClient.clear()
-            token.clear()
+            await AuthAxios.post('bible/auth/logout')
+            setHasUnsavedChanges(false)
             navigate('/login', { replace: true })
+        } catch {
+            setLogoutError('로그아웃하지 못했습니다. 잠시 후 다시 시도해주세요.')
+        } finally {
+            setLoggingOut(false)
         }
     }
 
@@ -72,21 +70,6 @@ const BibleLayout = () => {
                     </Link>
 
                     <nav className="bible-header__actions" aria-label="Bible 보조 메뉴">
-                        <a
-                            className="bible-header__link"
-                            href={getSocialAppUrl('/')}
-                            aria-label="SNS로 이동"
-                            onClick={(event) => {
-                                if (hasUnsavedChanges && !window.confirm('저장하지 않은 묵상이 있습니다. SNS로 이동하고 내용을 버릴까요?')) {
-                                    event.preventDefault()
-                                } else if (hasUnsavedChanges) {
-                                    setHasUnsavedChanges(false)
-                                }
-                            }}
-                        >
-                            <span className="bible-header__link-label">SNS로 이동</span>
-                            <FiExternalLink size={17} aria-hidden="true" />
-                        </a>
                         <button
                             className="bible-header__link"
                             type="button"
@@ -99,6 +82,7 @@ const BibleLayout = () => {
                                 {loggingOut ? '로그아웃 중…' : '로그아웃'}
                             </span>
                         </button>
+                        {logoutError ? <span className="bible-header__logout-error" role="alert">{logoutError}</span> : null}
                     </nav>
                 </div>
             </header>

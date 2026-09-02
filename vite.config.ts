@@ -4,8 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const devApiTarget = env.VITE_DEV_API_TARGET || 'https://api.starsnap.kr'
-  const devWebSocketTarget = env.VITE_DEV_WS_TARGET || 'wss://api.starsnap.kr'
+  const devApiTarget = env.VITE_DEV_API_TARGET || 'http://localhost:8080'
 
   return {
     plugins: [react(), tailwindcss()],
@@ -15,11 +14,6 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': {
           target: devApiTarget,
-          changeOrigin: true,
-        },
-        '/ws-chat': {
-          target: devWebSocketTarget,
-          ws: true,
           changeOrigin: true,
         },
       },

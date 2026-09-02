@@ -110,15 +110,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-html.chat-login-viewport,
-html.chat-login-viewport body,
-html.chat-login-viewport #root {
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
-  overscroll-behavior: none;
-}
-
 :where(
   input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
   select,
@@ -213,23 +204,9 @@ html {
   }
 }
 
-/* Masonry columns for snap grids */
-.snap-masonry {
-  column-gap: 16px;
-}
-.snap-masonry > * {
-  break-inside: avoid;
-  margin-bottom: 16px;
-}
-
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
-}
-
-.chat-message-item {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 72px;
 }
 
 @media (prefers-reduced-motion: reduce) {

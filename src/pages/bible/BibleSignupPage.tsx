@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import CustomAxios from '../../lib/axios/CustomAxios'
+import AuthAxios from '../../lib/axios/AuthAxios'
 
 const USERNAME_PATTERN = /^[A-Za-z0-9]{4,20}$/
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,72}$/
@@ -33,7 +33,7 @@ export default function BibleSignupPage() {
         setLoading(true)
         setError('')
         try {
-            await CustomAxios.post('bible/auth/signup', { username, email, password, acceptTerms })
+            await AuthAxios.post('bible/auth/signup', { username, email, password, acceptTerms })
             navigate('/login', { replace: true })
         } catch (requestError: any) {
             setError(requestError?.response?.status === 409
@@ -47,8 +47,11 @@ export default function BibleSignupPage() {
     return (
         <div className="min-h-[100dvh] flex items-center justify-center bg-canvas px-4 py-10">
             <div className="w-full max-w-[420px] rounded-[24px] border border-line bg-panel px-6 py-8 shadow-[var(--ss-shadow-md)] sm:px-9">
-                <h1 className="text-center text-2xl font-extrabold text-ink">StarSnap Bible 가입</h1>
-                <p className="mt-2 text-center text-sm text-sub">SNS와 공유하지 않는 Bible 전용 계정을 만듭니다.</p>
+                <div className="flex items-center justify-center gap-2.5">
+                    <img src="/icon-96.png" alt="" aria-hidden="true" width={96} height={96} className="h-10 w-10 rounded-xl object-cover" />
+                    <h1 className="text-2xl font-extrabold text-ink">StarSnap Bible 가입</h1>
+                </div>
+                <p className="mt-2 text-center text-sm text-sub">Bible 전용 계정을 만듭니다.</p>
                 <form className="mt-7 flex flex-col gap-4" onSubmit={submit}>
                     <label className="text-sm font-bold text-ink">
                         아이디

@@ -7,33 +7,19 @@
     "node": "^20.19.0 || ^22.12.0 || >=24.0.0"
   },
   "dependencies": {
-    "@hookform/resolvers": "^2.9.11",
-    "@react-oauth/google": "^0.12.1",
-    "@tanstack/react-query": "^4.34.17",
     "axios": "^1.19.0",
-    "classnames": "^2.3.2",
-    "lottie-react": "^2.4.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-hook-form": "^7.45.0",
     "react-icons": "^4.10.1",
-    "react-router-dom": "^7.18.2",
-    "typescript-cookie": "^1.0.6",
-    "web-vitals": "^2.1.4",
-    "zod": "^3.22.4"
+    "react-router-dom": "^7.18.2"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",
-    "@types/jest": "^27.5.2",
     "@types/node": "^20.11.0",
     "@types/react": "^18.3.19",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^5.2.0",
     "autoprefixer": "^10.5.0",
-    "cypress": "^15.21.0",
-    "jest": "^29.6.0",
-    "jest-environment-jsdom": "^29.6.0",
-    "playwright-core": "^1.61.0",
     "postcss": "^8.5.26",
     "tailwindcss": "^4.3.0",
     "typescript": "^5.8.3",
@@ -42,10 +28,6 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
-    "preview": "vite preview",
-    "cypress:open": "cypress open",
-    "cypress:run": "cypress run",
-    "design:sync": "node design-system/sync-tokens.mjs --write",
-    "design:check": "node design-system/sync-tokens.mjs --check && node design-system/validate-usage.mjs"
+    "preview": "vite preview"
   }
 }

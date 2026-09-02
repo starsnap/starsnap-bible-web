@@ -17,7 +17,7 @@
     "noFallthroughCasesInSwitch": true,
     "useDefineForClassFields": true
   },
-  "include": ["src"]
+  "include": ["src/index.tsx", "src/react-app-env.d.ts"]
   ,"exclude": [
     "src/**/*.test.*",
     "src/**/__tests__/**",

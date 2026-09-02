@@ -1,3 +1,18 @@
+.bible-header__logout-error {
+  max-width: 16rem;
+  color: var(--ss-danger-strong);
+  font-size: var(--ss-font-size-xs);
+  font-weight: var(--ss-font-weight-semibold);
+}
+
+.bible-session-loading {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  color: var(--ss-text-soft);
+  background: var(--ss-canvas);
+}
+
 .bible-shell {
   min-height: 100svh;
   color: var(--ss-text);
@@ -344,6 +359,10 @@
   border-color: var(--ss-border);
   background: var(--ss-surface-subtle);
   cursor: not-allowed;
+}
+
+.bible-editor-pane {
+  scroll-margin-top: 84px;
 }
 
 .bible-editor__field {
