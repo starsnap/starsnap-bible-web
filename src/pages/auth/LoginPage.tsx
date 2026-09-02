@@ -40,7 +40,9 @@ const LoginPage: React.FC = () => {
             }
         } catch (err: unknown) {
             const status = axios.isAxiosError(err) ? err.response?.status : undefined;
-            if (typeof status === 'number' && status >= 400 && status < 500) {
+            if (status === 429) {
+                setErrorMessage('요청이 너무 많습니다. 잠시 후 다시 시도해주세요.');
+            } else if (typeof status === 'number' && status >= 400 && status < 500) {
                 setErrorMessage('아이디 또는 비밀번호를 확인해주세요.');
             } else {
                 setErrorMessage('로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
@@ -85,13 +87,13 @@ const LoginPage: React.FC = () => {
 
                 <form className="mt-7 flex flex-col gap-4" onSubmit={handleSubmit}>
                     <div>
-                        <label htmlFor="login-identifier" className="block text-sm font-bold text-ink mb-1.5">아이디 또는 이메일</label>
+                        <label htmlFor="login-identifier" className="block text-sm font-bold text-ink mb-1.5">아이디</label>
                         <input
                             id="login-identifier"
                             className={inputClass}
                             name="identifier"
                             type="text"
-                            placeholder="예: 아이디 또는 이메일…"
+                            placeholder="아이디를 입력하세요…"
                             value={identifier}
                             onChange={(e) => setIdentifier(e.target.value)}
                             autoComplete="username"

@@ -4,13 +4,11 @@ import AuthAxios from '../../lib/axios/AuthAxios'
 
 const USERNAME_PATTERN = /^[A-Za-z0-9]{4,20}$/
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,72}$/
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const inputClass = 'w-full h-12 rounded-xl border border-line bg-panel px-4 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/30'
 
 export default function BibleSignupPage() {
     const navigate = useNavigate()
     const [username, setUsername] = useState('')
-    const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [acceptTerms, setAcceptTerms] = useState(false)
@@ -18,14 +16,13 @@ export default function BibleSignupPage() {
     const [error, setError] = useState('')
 
     const usernameError = username && !USERNAME_PATTERN.test(username) ? '영문과 숫자로 4~20자를 입력해주세요.' : ''
-    const emailError = email && !EMAIL_PATTERN.test(email) ? '유효한 이메일을 입력해주세요.' : ''
     const passwordBytes = new TextEncoder().encode(password).length
     const passwordError = password && (!PASSWORD_PATTERN.test(password) || passwordBytes > 72)
         ? '대·소문자, 숫자, 특수문자를 포함해 8자 이상, 72바이트 이하로 입력해주세요.'
         : ''
     const confirmError = confirmPassword && password !== confirmPassword ? '비밀번호가 일치하지 않습니다.' : ''
-    const valid = USERNAME_PATTERN.test(username) && EMAIL_PATTERN.test(email) &&
-        PASSWORD_PATTERN.test(password) && passwordBytes <= 72 && password === confirmPassword && acceptTerms
+    const valid = USERNAME_PATTERN.test(username) && PASSWORD_PATTERN.test(password) &&
+        passwordBytes <= 72 && password === confirmPassword && acceptTerms
 
     const submit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
@@ -33,12 +30,15 @@ export default function BibleSignupPage() {
         setLoading(true)
         setError('')
         try {
-            await AuthAxios.post('bible/auth/signup', { username, email, password, acceptTerms })
+            await AuthAxios.post('bible/auth/signup', { username, password, acceptTerms })
             navigate('/login', { replace: true })
         } catch (requestError: any) {
-            setError(requestError?.response?.status === 409
-                ? '이미 사용 중인 아이디 또는 이메일입니다.'
-                : '가입하지 못했습니다. 입력 내용을 확인하고 다시 시도해주세요.')
+            const status = requestError?.response?.status
+            setError(status === 429
+                ? '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.'
+                : status === 409
+                    ? '이미 사용 중인 아이디입니다.'
+                    : '가입하지 못했습니다. 입력 내용을 확인하고 다시 시도해주세요.')
         } finally {
             setLoading(false)
         }
@@ -57,11 +57,6 @@ export default function BibleSignupPage() {
                         아이디
                         <input className={`${inputClass} mt-1.5`} value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" placeholder="영문·숫자 4~20자" aria-invalid={Boolean(usernameError)} aria-describedby={usernameError ? 'bible-username-error' : undefined} />
                         {usernameError && <span id="bible-username-error" className="mt-1 block font-normal text-danger" role="alert">{usernameError}</span>}
-                    </label>
-                    <label className="text-sm font-bold text-ink">
-                        이메일
-                        <input className={`${inputClass} mt-1.5`} type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" placeholder="name@example.com" aria-invalid={Boolean(emailError)} aria-describedby={emailError ? 'bible-email-error' : undefined} />
-                        {emailError && <span id="bible-email-error" className="mt-1 block font-normal text-danger" role="alert">{emailError}</span>}
                     </label>
                     <label className="text-sm font-bold text-ink">
                         비밀번호
